@@ -1,0 +1,1922 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <link rel="stylesheet" href="library/bubble.css?v=3">
+  <title>JustGo</title>
+  <meta name="description" content="JustGo — a private messaging platform for college students. Chat, share files, and send money with classmates.">
+
+  <meta name="theme-color" content="#1652c4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b1018" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="JustGo">
+  <meta name="format-detection" content="telephone=no">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="JustGo">
+  <meta property="og:description" content="A private messaging platform for college students.">
+  <meta property="og:image" content="https://justgo.42web.io/icon-512.png">
+  <meta property="og:url" content="https://justgo.42web.io/">
+  <meta property="og:site_name" content="JustGo">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="JustGo">
+  <meta name="twitter:description" content="A private messaging platform for college students.">
+  <meta name="twitter:image" content="https://justgo.42web.io/icon-512.png">
+
+  <link rel="icon" type="image/png" sizes="512x512" href="https://justgo.42web.io/icon-512.png">
+  <link rel="apple-touch-icon" href="https://justgo.42web.io/icon-512.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://hvuhdnljbkdwzxlquvfp.supabase.co" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <link rel="dns-prefetch" href="https://static.wikitide.net">
+  <link rel="dns-prefetch" href="https://theogo.miraheze.org">
+
+  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css?v=20261016">
+
+  <style>
+    html { background: #f5f7fb; }
+    html[data-theme="dark"] { background: #0b1018; }
+    body { margin: 0; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+    #authScreen, #appScreen { min-height: 100vh; }
+    #boot-splash {
+      position: fixed; inset: 0; z-index: 9998;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 24px;
+      background: #f5f7fb;
+      transition: opacity .28s ease, visibility .28s ease;
+      padding: 24px;
+    }
+    html[data-theme="dark"] #boot-splash { background: #0b1018; }
+    #boot-splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    #boot-splash .bs-mark {
+      width: 84px; height: 84px; border-radius: 24px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1652c4, #3b7ce0);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 16px 44px rgba(22,82,196,.32);
+      animation: bsPulse 1.6s ease-in-out infinite;
+    }
+    #boot-splash .bs-mark img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #boot-splash .bs-title {
+      font-size: 22px; font-weight: 800; letter-spacing: -0.4px; color: #1b2437;
+      margin: 0;
+    }
+    html[data-theme="dark"] #boot-splash .bs-title { color: #e8ecf3; }
+    #boot-splash .bs-tip {
+      max-width: 340px; text-align: center;
+      font-size: 13px; line-height: 1.55; color: #6f7a8b;
+      min-height: 42px;
+      transition: opacity .25s ease;
+      padding: 0 8px;
+    }
+    html[data-theme="dark"] #boot-splash .bs-tip { color: #97a4bb; }
+    @keyframes bsPulse {
+      0%,100% { transform: scale(1); opacity: 1; }
+      50%     { transform: scale(.94); opacity: .82; }
+    }
+
+    /* =========================================================================
+       JustGo Circle chip — animated header entry point
+       ========================================================================= */
+    .circle-chip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      height: 36px;
+      padding: 0 10px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(124,58,237,.14), rgba(22,82,196,.10));
+      border: 1px solid transparent;
+      color: #7c3aed;
+      font-weight: 800;
+      cursor: pointer;
+      overflow: hidden;
+      max-width: 44px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background .2s, border-color .2s, padding .2s, box-shadow .25s, max-width .25s;
+      animation: circleChipSway 5s ease-in-out infinite;
+    }
+    @keyframes circleChipSway {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-1px); }
+    }
+    .circle-chip:hover,
+    .circle-chip:focus-visible,
+    .sidebar-actions-wrap.circle-open .circle-chip {
+      background: linear-gradient(135deg, #7c3aed, #1652c4);
+      border-color: #7c3aed;
+      color: #fff;
+      max-width: 240px;
+      padding-right: 12px;
+      box-shadow: 0 6px 20px rgba(124,58,237,.35);
+      outline: none;
+      animation: none;
+    }
+    .circle-chip-icon {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
+      border-radius: 50%;
+      background: rgba(124,58,237,.16);
+      color: inherit;
+      flex-shrink: 0;
+      transition: background .2s, color .2s;
+      animation: circleChipSpin 6s linear infinite;
+    }
+    @keyframes circleChipSpin {
+      0%   { transform: rotate(0deg); }
+      60%  { transform: rotate(0deg); }
+      70%  { transform: rotate(15deg); }
+      80%  { transform: rotate(-10deg); }
+      90%  { transform: rotate(5deg); }
+      100% { transform: rotate(0deg); }
+    }
+    .circle-chip:hover .circle-chip-icon,
+    .sidebar-actions-wrap.circle-open .circle-chip-icon {
+      background: rgba(255,255,255,.25);
+      color: #fff;
+      animation: none;
+    }
+    .circle-chip-ping {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #a855f7;
+      box-shadow: 0 0 0 2px var(--bg-surface, #fff);
+    }
+    .circle-chip-ping::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      border-radius: 50%;
+      background: #a855f7;
+      opacity: .55;
+      animation: circleChipPing 2s cubic-bezier(0, .6, .6, 1) infinite;
+    }
+    @keyframes circleChipPing {
+      0%   { transform: scale(1); opacity: .55; }
+      100% { transform: scale(3); opacity: 0; }
+    }
+    .circle-chip-label {
+      display: inline-flex;
+      flex-direction: column;
+      margin-left: 8px;
+      line-height: 1.1;
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity .18s .05s, transform .18s .05s;
+      text-align: left;
+    }
+    .circle-chip:hover .circle-chip-label,
+    .circle-chip:focus-visible .circle-chip-label,
+    .sidebar-actions-wrap.circle-open .circle-chip-label {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .circle-chip-label strong {
+      font-size: 12.5px;
+      font-weight: 800;
+      letter-spacing: -.2px;
+      color: inherit;
+    }
+    .circle-chip-label .circle-chip-sub {
+      font-size: 9.5px;
+      font-weight: 700;
+      opacity: .78;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+    }
+    .circle-chip-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .3px;
+      box-shadow: 0 2px 6px rgba(245,158,11,.5);
+      animation: circleChipBadge 2.4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes circleChipBadge {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.18); box-shadow: 0 3px 10px rgba(245,158,11,.7); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .circle-chip,
+      .circle-chip-icon,
+      .circle-chip-ping::before,
+      .circle-chip-badge {
+        animation: none !important;
+      }
+    }
+    @media (max-width: 400px) {
+      .circle-chip { max-width: 36px; padding: 0 7px; }
+      .circle-chip:hover,
+      .circle-chip:focus-visible {
+        max-width: 160px;
+        padding-right: 10px;
+      }
+      .circle-chip-label strong { font-size: 11.5px; }
+      .circle-chip-label .circle-chip-sub { font-size: 8.5px; }
+    }
+    html[data-theme="dark"] .circle-chip {
+      background: linear-gradient(135deg, rgba(124,58,237,.28), rgba(95,149,243,.16));
+      color: #c4b5fd;
+    }
+    html[data-theme="dark"] .circle-chip-icon {
+      background: rgba(124,58,237,.30);
+    }
+    html[data-theme="dark"] .circle-chip-ping {
+      box-shadow: 0 0 0 2px var(--bg-surface, #131a27);
+    }
+
+    /* =========================================================================
+       Vice City chip — replaces the old Library chip
+       ========================================================================= */
+    .vice-city-chip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      height: 36px;
+      padding: 0 10px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(236,72,153,.14), rgba(250,204,21,.12));
+      border: 1px solid transparent;
+      color: #db2777;
+      font-weight: 800;
+      cursor: pointer;
+      overflow: hidden;
+      max-width: 44px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background .2s, border-color .2s, padding .2s, box-shadow .25s, max-width .25s;
+      animation: viceCitySway 5s ease-in-out infinite;
+    }
+    @keyframes viceCitySway {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-1px); }
+    }
+    .vice-city-chip:hover,
+    .vice-city-chip:focus-visible {
+      background: linear-gradient(135deg, #ec4899, #f59e0b);
+      border-color: #ec4899;
+      color: #fff;
+      max-width: 240px;
+      padding-right: 12px;
+      box-shadow: 0 6px 20px rgba(236,72,153,.35);
+      outline: none;
+      animation: none;
+    }
+    .vice-city-chip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
+      border-radius: 6px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #fff;
+    }
+    .vice-city-chip-icon svg { width: 100%; height: 100%; display: block; }
+    .vice-city-chip-label {
+      display: inline-flex;
+      flex-direction: column;
+      margin-left: 8px;
+      line-height: 1.1;
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity .18s .05s, transform .18s .05s;
+      text-align: left;
+    }
+    .vice-city-chip:hover .vice-city-chip-label,
+    .vice-city-chip:focus-visible .vice-city-chip-label {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .vice-city-chip-label strong { font-size: 12.5px; font-weight: 800; letter-spacing: -.2px; color: inherit; }
+    .vice-city-chip-label .vice-city-chip-sub { font-size: 9.5px; font-weight: 700; opacity: .78; letter-spacing: .3px; text-transform: uppercase; }
+    @media (max-width: 400px) {
+      .vice-city-chip { max-width: 36px; padding: 0 7px; }
+      .vice-city-chip:hover, .vice-city-chip:focus-visible { max-width: 160px; padding-right: 10px; }
+      .vice-city-chip-label strong { font-size: 11.5px; }
+      .vice-city-chip-label .vice-city-chip-sub { font-size: 8.5px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .vice-city-chip { animation: none !important; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ============ SVG SPRITE ============ -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+  </symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+  </symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 17l3-10 6 4 6-4 3 10z"></path>
+    <circle cx="6" cy="20" r="1.5"></circle><circle cx="12" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle>
+  </symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect>
+    <rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  </symbol>
+  <symbol id="i-cog" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+    <polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
+  </symbol>
+  <symbol id="i-chats" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+  </symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>
+  </symbol>
+</svg>
+
+<!-- ============ BOOT SPLASH ============ -->
+<div id="boot-splash" aria-hidden="true">
+  <div class="bs-mark"><img src="https://justgo.42web.io/icon-512.png" alt="JustGo"></div>
+  <h1 class="bs-title">JustGo</h1>
+  <p class="bs-tip" id="bootTip">Tip: press ⌘K to search across every chat.</p>
+</div>
+
+<!-- ============ FATAL ERROR ============ -->
+<div id="fatalError"
+     role="alert"
+     style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 16px;background:#b91c1c;color:#fff;font-family:Inter,Arial,sans-serif;font-size:13px;">
+  <strong>Something went wrong:</strong> <span id="fatalErrorText"></span>
+</div>
+
+<!-- ============ NOSCRIPT ============ -->
+<noscript>
+  <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#f5f7fb;padding:24px;text-align:center;font-family:Inter,Arial,sans-serif;">
+    <div style="max-width:420px;">
+      <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#1652c4,#3b7ce0);margin:0 auto 20px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:26px;box-shadow:0 10px 28px rgba(22,82,196,.28);">J</div>
+      <h1 style="margin:0 0 8px;font-size:20px;color:#1b2437;">JustGo needs JavaScript</h1>
+      <p style="margin:0;color:#6f7a8b;font-size:14px;line-height:1.55;">Please enable JavaScript in your browser to use JustGo. It's required for chatting, sending files, and the wallet.</p>
+    </div>
+  </div>
+</noscript>
+
+<!-- ============ AUTH ============ -->
+<section id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="brand-mark">
+        <img src="https://justgo.42web.io/icon-512.png" alt="JustGo logo" style="width:110%;height:110%;object-fit:contain;border-radius:inherit;display:block;">
+      </div>
+      <h1>JustGo</h1>
+      <p>A place to walk, talk, and grow together</p>
+    </div>
+
+    <div id="loginSection">
+      <div class="auth-heading">
+        <h2>Welcome back</h2>
+        <p>Sign in to continue.</p>
+      </div>
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="loginUsername">Username</label>
+          <input id="loginUsername" type="text" placeholder="Your username"
+                 autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false"
+                 inputmode="text" required>
+        </div>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" placeholder="Your password"
+                 autocomplete="current-password" required>
+        </div>
+        <button id="loginBtn" class="auth-submit" type="submit">Sign in</button>
+      </form>
+      <div id="loginMessage" class="auth-message hidden"></div>
+      <div class="auth-switch">
+        <span>Don't have an account?</span>
+        <button id="showSignupBtn" type="button" class="text-button">Create account</button>
+      </div>
+      <div class="auth-help-line">
+        <button type="button" id="forgotPasswordBtn" class="link-button">Forgot password?</button>
+      </div>
+    </div>
+
+    <div id="signupSection" class="hidden">
+      <div class="auth-heading">
+        <h2>Create your account</h2>
+        <p>Fill your details so classmates can find you.</p>
+      </div>
+      <form id="signupForm" novalidate>
+        <div class="field">
+          <label for="signupUsername">Username</label>
+          <input id="signupUsername" type="text" placeholder="e.g. username"
+                 autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false"
+                 inputmode="text" required>
+        </div>
+        <div class="field">
+          <label for="signupDisplayName">Display name</label>
+          <input id="signupDisplayName" type="text" placeholder="Your full name"
+                 autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="signupPassword">Password</label>
+          <input id="signupPassword" type="password" placeholder="At least 6 characters"
+                 autocomplete="new-password" required>
+        </div>
+        <div class="signup-warning">
+          <div class="signup-warning-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <strong>Important: no password recovery</strong>
+          </div>
+          <p>JustGo does not store passwords in a readable form and does not collect any email or phone number. <strong>If you forget your password, there is no way to recover this account.</strong> Please choose a password you will remember.</p>
+          <label class="signup-warning-check">
+            <input type="checkbox" id="signupAcknowledge">
+            <span>I understand. If I forget my password, my account is gone forever.</span>
+          </label>
+        </div>
+        <button id="signupBtn" class="auth-submit" type="submit" disabled>Create account</button>
+      </form>
+      <div id="signupMessage" class="auth-message hidden"></div>
+      <div class="auth-switch">
+        <span>Already have an account?</span>
+        <button id="showLoginBtn" type="button" class="text-button">Sign in</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ APP ============ -->
+<section id="appScreen" class="app-screen hidden">
+  <aside class="sidebar">
+    <header class="sidebar-header">
+      <div class="sidebar-brand">
+        <button id="openProfileBtn" class="avatar-btn" type="button" title="Your profile" aria-label="Your profile">
+          <div id="myAvatar" class="avatar-small">J</div>
+        </button>
+        <div class="sidebar-user">
+          <strong id="currentDisplayName">JustGo</strong>
+          <button id="currentUsernameBtn" type="button" class="sidebar-user-link" title="View your profile">
+            <span id="currentUsername">@username</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="sidebarActionsWrap" class="sidebar-actions-wrap">
+        <button id="viceCityChip" class="vice-city-chip" type="button" title="Vice City" aria-label="Open Vice City">
+          <span class="vice-city-chip-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192.756 192.756" aria-hidden="true" focusable="false">
+              <path fill="#fff" d="M0 0h192.756v192.756H0V0z"/>
+              <path d="M149.805 130.058l.256-2.62c.127-3.067.191-5.177.127-6.454-.062-3.196-1.15-5.178-3.322-5.88-1.471-.448-2.875-.192-4.219.83-.701.575-1.469 1.406-2.299 2.557l-.449.64c-.318-1.534-1.086-2.748-2.301-3.707-1.725-1.342-4.281-1.789-7.668-1.342l1.15-5.752.191-1.342c0-.959-.318-1.79-.83-2.557-.639-.703-1.344-1.15-2.238-1.406-1.021-.256-2.045-.063-2.939.447-.957.575-1.533 1.343-1.789 2.365l-1.021 3.131a308.848 308.848 0 0 1-2.877 7.861c-1.598.574-3.195 1.214-4.793 1.853l-2.045.959c-1.023.447-1.662 1.15-2.045 2.173a4.221 4.221 0 0 0 .062 3.068c.258.51.641.958 1.088 1.342-.83-.064-1.598.063-2.492.447a4.03 4.03 0 0 0 .574-2.109v-.384c-.127-1.086-.574-1.98-1.406-2.684-.83-.703-1.789-.959-2.875-.895-1.215.063-2.621.574-4.219 1.342-2.875 1.47-5.56 3.835-7.86 7.094-.256.319-.575.64-.767 1.022a12.202 12.202 0 0 0-1.15 2.237c-.639 1.405-1.086 2.748-1.342 4.09-.703 3.387-.127 5.943 1.662 7.604.639.576 1.47.959 2.3 1.215 1.342.384 2.749.256 4.282-.319 1.598-.64 3.516-1.917 5.623-3.771l3.195-2.812c.447 2.365 1.535 3.835 3.324 4.41 1.916.575 3.643-.064 5.367-1.854 1.088-1.15 2.43-3.132 3.963-6.008.385 2.685 1.533 4.41 3.516 5.113 2.811 1.149 5.559-.447 8.307-4.729.449.575 1.088.958 1.727 1.15 1.598.639 3.131.319 4.537-.831 1.088-.831 2.365-2.364 3.707-4.537l-.83 9.777c-9.715 1.598-21.346 4.027-34.703 7.286a1019.9 1019.9 0 0 0-34.191 9.074c-1.853.512-3.706 1.023-5.56 1.599l-12.974 3.771-5.049 1.533c-1.022.32-1.854.959-2.365 1.918-.447 1.022-.575 1.98-.255 3.067.383 1.022 1.022 1.854 1.981 2.301.958.511 1.981.639 3.003.319l5.113-1.533c4.282-1.278 8.691-2.621 13.292-3.899 12.015-3.451 23.199-6.454 33.681-9.075a252.317 252.317 0 0 1 6.646-1.597c11.439-2.748 21.729-4.922 30.611-6.52-.256 2.94-.512 5.624-.83 8.116-.768 7.158-1.406 12.719-1.982 16.745-.574.383-1.021.83-1.342 1.405s-.512 1.215-.512 1.917v.192c.064 1.086.129 1.981.256 2.684.256 1.662.895 2.876 2.045 3.516.703.383 1.406.639 2.109.639s1.342-.191 1.918-.512c1.021-.511 1.725-1.405 2.172-2.684l.512-1.854.83-5.24c.576-3.962 1.215-9.331 1.918-16.104l.064-.704.959-9.33 3.514-.384c7.094-.831 12.463-.959 16.232-.447 2.045.32 3.324.768 3.898 1.278v.384l-.127.895c0 .959.256 1.789.83 2.556.576.704 1.342 1.215 2.238 1.407 1.086.255 2.045.063 3.002-.512.959-.575 1.535-1.343 1.791-2.429.383-1.661.318-3.132-.064-4.474-.383-1.405-1.15-2.62-2.236-3.643-1.791-1.662-4.475-2.812-8.117-3.323-4.793-.703-11.504-.512-20.195.512l.705-9.584zm-85.573 10.609c-.32.895-.448 1.789-.511 2.684-1.79 1.471-3.323 2.492-4.601 3.195.511-1.598 1.406-3.259 2.62-4.921.958-.063 1.661-.447 2.492-.958zm-27.033-.831l10.864-20.004c.511-.958 1.342-1.598 2.365-1.917 1.022-.383 2.045-.256 3.003.256.959.511 1.598 1.342 1.917 2.364.32 1.087.256 2.109-.255 3.068l-6.966 12.909c2.492-.703 5.049.383 5.432 3.067a36.952 36.952 0 0 1 2.492-3.644c1.022-1.342 2.301-2.812 3.771-3.706a4.776 4.776 0 0 1 2.62-.575c1.279.128 2.429.64 3.26 1.662v.063l.767 1.342.831-1.533c2.301-3.835 4.857-6.008 7.733-6.327 1.789-.256 3.898.384 5.176 1.79 1.086 1.149 1.662 2.556 1.726 4.345v.064c0 .831-.192 1.726-.448 2.62 1.022-.255 1.981-.128 2.876.447.639.384 1.086.895 1.47 1.47.32.575.511 1.278.511 1.981v.256a3.946 3.946 0 0 1-.575 1.726c-1.662 2.812-3.707 5.176-6.008 7.029-1.342 1.023-2.556 1.918-3.771 2.429-3.771 1.917-6.902 1.981-9.267.192-2.812 1.917-5.176 3.195-7.222 3.771-2.045.575-3.834.447-5.304-.256-1.726-.831-2.876-2.237-3.388-4.282-.256 1.278-.383 2.173-.383 2.685v.128l.127 1.086c0 .768-.191 1.47-.639 2.173-.447.703-1.086 1.15-1.853 1.47-.958.447-1.981.447-3.003 0-1.023-.383-1.726-1.15-2.173-2.173-.383-.895-.511-2.045-.383-3.45.127-1.727.576-4.091 1.406-7.095l.576-2.045c-4.41 8.245-7.094 13.102-8.117 14.763-1.917 3.132-4.026 4.41-6.391 3.898-1.022-.255-1.853-.767-2.492-1.598-.64-.767-1.023-1.726-1.151-2.939l-2.492-12.462c-.255-1.087-.064-2.109.575-3.004.575-.896 1.406-1.47 2.492-1.726 1.086-.191 2.109 0 3.004.639.895.575 1.469 1.406 1.726 2.493l.958 4.921 4.603-8.371zm67.613-9.778l-2.428 2.045-3.131 2.812c1.086-1.918 2.428-3.579 4.217-4.857.32-.256.641-.447.959-.639.639-.32 1.342-.703 2.109-.895l-1.726 1.534zm26.012-2.11l-2.748-.127c.127-1.471.32-3.26.576-5.433a18.116 18.116 0 0 1 3.193-.511 210.6 210.6 0 0 0-1.021 6.071zm-15.849-.766l-.32.64-.701-.64h1.021z" fill="#0f0f0f"/>
+            </svg>
+          </span>
+          <span class="vice-city-chip-label">
+            <strong>Vice City</strong>
+            <span class="vice-city-chip-sub">Enter the city</span>
+          </span>
+        </button>
+
+        <button id="circleChip" class="circle-chip" type="button" title="JustGo Circle — Discuss, Ask, Grow" aria-label="Open JustGo Circle">
+          <span class="circle-chip-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M8 12a4 4 0 0 1 8 0"/>
+              <path d="M8 14h.01M16 14h.01"/>
+            </svg>
+            <span class="circle-chip-ping"></span>
+          </span>
+          <span class="circle-chip-label">
+            <strong>Circle</strong>
+            <span class="circle-chip-sub">Discuss · Ask</span>
+          </span>
+          <span class="circle-chip-badge">NEW</span>
+        </button>
+
+        <button id="walletChip" class="wallet-chip" type="button" title="JustGo Wallet" aria-label="Open wallet">
+          <span class="wallet-chip-icon">₹</span>
+          <span class="wallet-chip-label">
+            <strong id="walletChipBalance">₹0.00</strong>
+          </span>
+          <span id="walletChipBadge" class="wallet-chip-badge hidden"></span>
+        </button>
+
+        <button id="sidebarMenuBtn" class="icon-btn sidebar-menu-btn" type="button" title="More" aria-label="More" aria-haspopup="menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="5" r="1.6"></circle>
+            <circle cx="12" cy="12" r="1.6"></circle>
+            <circle cx="12" cy="19" r="1.6"></circle>
+          </svg>
+        </button>
+
+        <div class="sidebar-actions legacy-actions" id="sidebarActions" aria-hidden="true">
+          <button id="newGroupBtn" class="icon-btn" type="button" tabindex="-1"></button>
+          <button id="appsBtn" class="icon-btn" type="button" tabindex="-1"></button>
+          <button id="markAllReadBtn" class="icon-btn" type="button" tabindex="-1"></button>
+          <button id="logoutBtn" class="icon-btn" type="button" tabindex="-1"></button>
+        </div>
+      </div>
+
+      <div id="sidebarMenu" class="sidebar-menu hidden" role="menu" aria-hidden="true">
+        <button type="button" data-menu="profile" role="menuitem">
+          <span class="sm-ic"><svg><use href="#i-user"></use></svg></span>
+          <span class="sm-txt"><strong>My profile</strong><span>Photo, bio, links</span></span>
+        </button>
+        <button type="button" data-menu="library" role="menuitem">
+          <span class="sm-ic"><svg><use href="#i-book"></use></svg></span>
+          <span class="sm-txt"><strong>My Library</strong><span>Books, folders &amp; offline reads</span></span>
+        </button>
+        <button type="button" data-menu="premium" role="menuitem">
+          <span class="sm-ic"><svg><use href="#i-crown"></use></svg></span>
+          <span class="sm-txt"><strong>Go Premium</strong><span>Unlock all features 👑</span></span>
+        </button>
+        <button type="button" data-menu="newgroup" role="menuitem">
+          <span class="sm-ic"><svg><use href="#i-users"></use></svg></span>
+          <span class="sm-txt"><strong>New group</strong><span>Start a group chat</span></span>
+        </button>
+        <button type="button" data-menu="markallread" role="menuitem">
+          <span class="sm-ic"><svg><use href="#i-check"></use></svg></span>
+          <span class="sm-txt"><strong>Mark all read</strong><span>Clear all unread badges</span></span>
+        </button>
+        <button type="button" data-menu="apps" role="menuitem">
+          <span class="sm-ic"><svg><use href="#i-grid"></use></svg></span>
+          <span class="sm-txt"><strong>Apps</strong><span>Open the apps hub</span></span>
+        </button>
+        <button type="button" data-menu="settings" role="menuitem">
+          <span class="sm-ic"><svg><use href="#i-cog"></use></svg></span>
+          <span class="sm-txt"><strong>Settings</strong><span>Theme, wallpaper &amp; more</span></span>
+        </button>
+        <div class="sm-divider"></div>
+        <button type="button" data-menu="logout" class="sm-danger" role="menuitem">
+          <span class="sm-ic"><svg><use href="#i-logout"></use></svg></span>
+          <span class="sm-txt"><strong>Sign out</strong><span>Log out of JustGo</span></span>
+        </button>
+      </div>
+    </header>
+
+    <div class="search-area">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input id="userSearch" type="text" placeholder="Search people, course, year" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div id="searchResults" class="search-results hidden"></div>
+    </div>
+
+    <div class="conversation-heading">Conversations</div>
+    <div id="conversationList" class="conversation-list">
+      <div class="empty-sidebar">No conversations yet.<br>Search someone or create a group.</div>
+    </div>
+  </aside>
+
+  <main class="chat-area" id="chatArea">
+    <div id="chatView" class="chat-view">
+      <div class="expiry-banner" id="expiryBanner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span><strong>Files auto-delete after 24 hours.</strong> Premium users get 48 hours. Use files responsibly.</span>
+        <button id="expiryBannerClose" type="button" aria-label="Dismiss">×</button>
+      </div>
+
+      <div id="emptyChat" class="empty-chat">
+        <svg class="empty-chat-illustration" viewBox="0 0 220 180" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="24" y="40" width="150" height="106" rx="18" fill="#eef3fc" stroke="#144097" stroke-width="2"/>
+          <rect x="46" y="66" width="106" height="8" rx="4" fill="#144097" opacity=".35"/>
+          <rect x="46" y="86" width="80" height="8" rx="4" fill="#144097" opacity=".25"/>
+          <rect x="46" y="106" width="60" height="8" rx="4" fill="#144097" opacity=".18"/>
+          <circle cx="176" cy="60" r="20" fill="#16a34a" opacity=".14"/>
+          <circle cx="176" cy="60" r="8" fill="#16a34a"/>
+          <circle cx="188" cy="120" r="14" fill="#f59e0b" opacity=".18"/>
+          <circle cx="188" cy="120" r="6" fill="#f59e0b"/>
+        </svg>
+        <h2>Welcome to JustGo</h2>
+        <p>Select a chat, or search for someone by name or course.</p>
+        <p style="margin-top:14px; font-size:11.5px; color:#9aa2ae;">
+          Tip: press <kbd style="padding:2px 6px;border:1px solid #d9dee7;border-radius:4px;background:#fff;font-family:inherit;">⌘K</kbd>
+          to search across all chats.
+        </p>
+      </div>
+
+      <div id="activeChat" class="active-chat hidden">
+        <header class="chat-header">
+          <button id="mobileBackBtn" class="mobile-back-btn" type="button" aria-label="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <div id="chatAvatar" class="avatar-small">U</div>
+          <div class="chat-user-info">
+            <strong id="chatName">User</strong>
+            <span id="chatSub">@username</span>
+          </div>
+          <div class="chat-header-actions">
+            <button id="chatSearchBtn" class="icon-btn" type="button" title="Search in chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </button>
+            <button id="chatFilesBtn" class="icon-btn" type="button" title="Shared files">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+            </button>
+            <button id="chatGroupSettingsBtn" class="icon-btn hidden" type="button" title="Group settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+            <button id="chatInfoBtn" class="icon-btn" type="button" title="Conversation info">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            </button>
+          </div>
+        </header>
+
+        <div id="announcementBanner" class="announcement-banner hidden">
+          <span class="ab-ico">📢</span>
+          <span>Announcements only — only admins can post</span>
+        </div>
+
+        <div id="chatSearchBar" class="chat-search-bar hidden">
+          <input id="chatSearchInput" type="text" placeholder="Search in this chat..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <button id="chatSearchClose" type="button" aria-label="Close search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div id="filesPanel" class="files-panel hidden">
+          <div class="files-panel-head">
+            <strong>Shared files</strong>
+            <button id="filesClose" type="button" aria-label="Close files">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div id="filesList" class="files-list"></div>
+        </div>
+
+        <div id="messages" class="messages"></div>
+        <div id="typingIndicator" class="typing-indicator hidden"></div>
+        <button id="jumpToLatestBtn" class="jump-to-latest hidden" type="button" aria-label="Jump to latest">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          <span id="jumpCount"></span>
+        </button>
+
+        <div class="message-area">
+          <div id="replyBar" class="reply-bar hidden">
+            <div class="reply-bar-body">
+              <div class="reply-bar-name"></div>
+              <div class="reply-bar-text"></div>
+            </div>
+            <button id="replyCancel" type="button" aria-label="Cancel reply">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div id="selectedFile" class="selected-file hidden"></div>
+          <form id="messageForm" class="message-form">
+            <button id="composerPlusBtn" class="attach-btn plus-btn" type="button" title="More options" aria-label="More options">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+            <div id="composerDropup" class="composer-dropup hidden">
+              <button type="button" data-action="file">
+                <span class="cd-ic">📎</span>
+                <span class="cd-txt"><strong>Attach file</strong><span>Photos, docs, up to 20 MB</span></span>
+              </button>
+              <button type="button" data-action="money">
+                <span class="cd-ic">₹</span>
+                <span class="cd-txt"><strong>Send / Request money</strong><span>JustGo wallet</span></span>
+              </button>
+              <button type="button" data-action="split">
+                <span class="cd-ic">🧾</span>
+                <span class="cd-txt"><strong>Split money</strong><span>Divide a bill</span></span>
+              </button>
+              <button type="button" data-action="emoji">
+                <span class="cd-ic">😊</span>
+                <span class="cd-txt"><strong>Emoji</strong><span>Pick a reaction</span></span>
+              </button>
+              <button type="button" data-action="library">
+                <span class="cd-ic">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                </span>
+                <span class="cd-txt"><strong>Share book from Library</strong><span>Browse wiki books &amp; send</span></span>
+              </button>
+              <button type="button" data-action="theogo">
+                <span class="cd-ic"><img src="https://static.wikitide.net/theogowiki/5/5d/TG.png" alt="TG" style="width:20px;height:20px;object-fit:contain;"></span>
+                <span class="cd-txt"><strong>Share TheoGo article</strong><span>Search the wiki</span></span>
+              </button>
+            </div>
+            <input id="fileInput" type="file" multiple hidden>
+
+            <textarea id="messageInput" rows="1" placeholder="Write a message..." autocapitalize="sentences" autocorrect="on"></textarea>
+            <button id="sendBtn" class="send-btn" type="submit" title="Send (right-click / long-press to schedule)" aria-label="Send">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+          </form>
+          <div class="file-help">Files up to 20 MB (50 MB premium) • up to 10 at once</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="mobile-nav" id="mobileNav">
+    <button class="mobile-nav-btn active" data-nav="chats" type="button" aria-label="Chats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chats"/></svg>
+      <span>Chats</span>
+    </button>
+    <button class="mobile-nav-btn" data-nav="library" type="button" aria-label="Library">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-book"/></svg>
+      <span>Library</span>
+    </button>
+    <button class="mobile-nav-btn" data-nav="wallet" type="button" aria-label="Wallet">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-wallet"/></svg>
+      <span>Wallet</span>
+    </button>
+    <button class="mobile-nav-btn" data-nav="profile" type="button" aria-label="Profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-user"/></svg>
+      <span>Profile</span>
+    </button>
+  </nav>
+</section>
+
+<!-- ============ PREMIUM MODAL ============ -->
+<div id="premiumModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>👑 Premium</strong>
+      <button id="premiumClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body"><div id="premiumBody"></div></div>
+  </div>
+</div>
+
+<!-- ============ FORGOT PASSWORD ============ -->
+<div id="forgotPasswordModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Forgot password</strong>
+      <button id="forgotPasswordClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="auth-heading" style="text-align:center;margin-bottom:18px;">
+        <h2>There is no password recovery</h2>
+        <p>JustGo keeps everything private. Here is why.</p>
+      </div>
+      <div class="forgot-points">
+        <div class="forgot-point"><div class="forgot-point-icon">🔒</div><div class="forgot-point-text"><strong>We do not store your password in a readable form</strong><span>Even we cannot see it. This is on purpose.</span></div></div>
+        <div class="forgot-point"><div class="forgot-point-icon">📭</div><div class="forgot-point-text"><strong>We do not collect an email or phone number</strong><span>There is no way to send you a reset link.</span></div></div>
+        <div class="forgot-point"><div class="forgot-point-icon">🛡️</div><div class="forgot-point-text"><strong>Your username and password are the only way in</strong><span>No recovery codes, no security questions.</span></div></div>
+      </div>
+      <div class="forgot-final">If you forget your password, this account is gone forever. The only option is to create a new account with a new username.</div>
+      <div class="forgot-tip"><strong>Tip:</strong> Choose a password you will remember. You can write it down somewhere safe before you create the account.</div>
+      <button id="forgotPasswordUnderstandBtn" class="auth-submit" type="button" style="margin-top:18px;">I understand</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PROFILE ============ -->
+<div id="profileModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Your profile</strong>
+      <button id="profileClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="profile-avatar-wrap">
+        <div id="profileAvatarPreview" class="avatar-big">J</div>
+        <label for="avatarInput" class="avatar-upload-btn">Change photo</label>
+        <input id="avatarInput" type="file" accept="image/*" hidden>
+      </div>
+
+      <button id="profilePremiumCard" class="profile-premium-card" type="button">
+        <div class="ppc-crown">👑</div>
+        <div class="ppc-text">
+          <strong>Go Premium</strong>
+          <span>50 MB files · Dark theme · 0.5% fees · Library downloads</span>
+        </div>
+        <span class="ppc-arrow">›</span>
+      </button>
+
+      <div class="field"><label>Username (cannot change)</label><input id="profileUsername" type="text" disabled></div>
+      <div class="field"><label for="profileDisplayName">Display name</label><input id="profileDisplayName" type="text" maxlength="60"></div>
+      <div class="field"><label for="profileHeadline">Headline</label><input id="profileHeadline" type="text" maxlength="90" placeholder="e.g. Theology student • Loves Hebrew"></div>
+      <div class="field"><label for="profileDob">Date of birth</label><input id="profileDob" type="date"></div>
+      <div class="field">
+        <label for="profileBio">Bio</label>
+        <textarea id="profileBio" rows="3" maxlength="280" placeholder="A short intro about yourself..."></textarea>
+        <div class="status-char-count"><span id="profileBioCount">0</span> / 280</div>
+      </div>
+
+      <div class="profile-section-title">Contact</div>
+      <div class="profile-contact-list">
+        <div class="profile-contact-row">
+          <div class="pcr-icon pcr-icon-tg"><img src="https://static.wikitide.net/theogowiki/5/5d/TG.png" alt="TG" style="width:22px;height:22px;object-fit:contain;"></div>
+          <div class="pcr-body">
+            <label for="profileTheogo" class="pcr-label">TheoGo Username</label>
+            <input id="profileTheogo" type="text" placeholder="your_username" maxlength="60" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="profile-contact-row">
+          <div class="pcr-icon pcr-icon-ig">📸</div>
+          <div class="pcr-body">
+            <label for="profileInstagram" class="pcr-label">Instagram</label>
+            <input id="profileInstagram" type="text" placeholder="your_handle" maxlength="60" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="profile-contact-row">
+          <div class="pcr-icon pcr-icon-mail">📧</div>
+          <div class="pcr-body">
+            <label for="profileEmail" class="pcr-label">Email</label>
+            <input id="profileEmail" type="email" placeholder="you@example.com" maxlength="120" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="profile-contact-row">
+          <div class="pcr-icon pcr-icon-wa">💬</div>
+          <div class="pcr-body">
+            <label for="profileWhatsapp" class="pcr-label">WhatsApp</label>
+            <input id="profileWhatsapp" type="tel" placeholder="+91 98765 43210" maxlength="24" inputmode="tel">
+          </div>
+        </div>
+      </div>
+
+      <button id="profileSaveBtn" class="auth-submit" type="button">Save changes</button>
+      <div id="profileMessage" class="auth-message hidden"></div>
+
+      <div class="url-hint">
+        <strong>Your profile link:</strong>
+        <span id="profilePublicLink">https://justgo.42web.io/?u=username</span>
+        <div style="margin-top:6px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button id="profileViewBtn" type="button" class="text-button">👁 View my profile</button>
+          <button id="profileCopyLinkBtn" type="button" class="text-button">Copy link</button>
+        </div>
+      </div>
+
+      <div class="profile-section-title">Settings</div>
+      <button id="openSettingsBtn" class="settings-entry-btn" type="button">
+        <span class="se-ic">⚙️</span>
+        <span class="se-txt"><strong>App settings</strong><span>Theme, notifications, wallpaper &amp; more</span></span>
+        <span class="se-arrow">›</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<div id="settingsModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Settings</strong>
+      <button id="settingsClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-section">
+        <div class="settings-section-title">Appearance</div>
+        <div class="field">
+          <label>Theme</label>
+          <div class="theme-row">
+            <button class="theme-btn active" data-theme="light" type="button">Light</button>
+            <button class="theme-btn" data-theme="dark" type="button">Dark</button>
+            <button class="theme-btn" data-theme="auto" type="button">Auto</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Chat wallpaper</div>
+        <p class="settings-hint">Applies to all your chats. Custom wallpapers require Premium.</p>
+        <div class="wallpaper-grid" id="wallpaperGrid"></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Notifications</div>
+        <label class="switch-card">
+          <div class="switch-card-body">
+            <div class="switch-card-title"><span class="sw-ico">🔔</span>Desktop notifications</div>
+            <div class="switch-card-desc">Show a notification for new messages</div>
+          </div>
+          <input type="checkbox" id="settingNotifications" checked>
+          <div class="switch-toggle"></div>
+        </label>
+        <label class="switch-card">
+          <div class="switch-card-body">
+            <div class="switch-card-title"><span class="sw-ico">🔊</span>Sound</div>
+            <div class="switch-card-desc">Play a sound on new messages</div>
+          </div>
+          <input type="checkbox" id="settingSound" checked>
+          <div class="switch-toggle"></div>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Chat</div>
+        <label class="switch-card">
+          <div class="switch-card-body">
+            <div class="switch-card-title"><span class="sw-ico">↵</span>Send on Enter</div>
+            <div class="switch-card-desc">Enter sends • Shift+Enter makes a new line</div>
+          </div>
+          <input type="checkbox" id="settingSendOnEnter" checked>
+          <div class="switch-toggle"></div>
+        </label>
+        <label class="switch-card">
+          <div class="switch-card-body">
+            <div class="switch-card-title"><span class="sw-ico">📖</span>Read receipts</div>
+            <div class="switch-card-desc">Show ✓✓ when your message is read</div>
+          </div>
+          <input type="checkbox" id="settingReadReceipts" checked>
+          <div class="switch-toggle"></div>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Library</div>
+        <button id="openLibraryFromSettingsBtn" class="settings-entry-btn" type="button">
+          <span class="se-ic">📚</span>
+          <span class="se-txt"><strong>JustGo Library</strong><span>Browse wiki books, read online, save to folders</span></span>
+          <span class="se-arrow">›</span>
+        </button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Saved messages</div>
+        <button id="openSavedBtn" class="settings-entry-btn" type="button">
+          <span class="se-ic">⭐</span>
+          <span class="se-txt"><strong>My saved messages</strong><span>Messages you starred</span></span>
+          <span class="se-arrow">›</span>
+        </button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Scheduled messages</div>
+        <button id="openScheduledBtn" class="settings-entry-btn" type="button">
+          <span class="se-ic">⏰</span>
+          <span class="se-txt"><strong>Upcoming</strong><span>Messages waiting to be sent</span></span>
+          <span class="se-arrow">›</span>
+        </button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Premium</div>
+        <button id="openPremiumFromSettingsBtn" class="settings-entry-btn premium-entry" type="button">
+          <span class="se-ic">👑</span>
+          <span class="se-txt"><strong>Go Premium</strong><span>50 MB files, dark theme, 0.5% fees, Library downloads</span></span>
+          <span class="se-arrow">›</span>
+        </button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">JustGo Wallet</div>
+        <button id="openWalletFromSettingsBtn" class="settings-entry-btn" type="button">
+          <span class="se-ic">₹</span>
+          <span class="se-txt"><strong>My wallet</strong><span>Send, request, deposit, withdraw</span></span>
+          <span class="se-arrow">›</span>
+        </button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">My Data</div>
+        <button id="openMyDataBtn" class="settings-entry-btn" type="button">
+          <span class="se-ic">📊</span>
+          <span class="se-txt"><strong>My activity</strong><span>Messages, active hours, wallet stats</span></span>
+          <span class="se-arrow">›</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GROUP CREATE ============ -->
+<div id="groupModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>New group</strong>
+      <button id="groupClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="group-photo-picker">
+        <div id="createGroupAvatarPreview" class="avatar-big group-avatar">G</div>
+        <div class="gp-info"><strong>Group photo</strong><span>Optional — you can add it later too</span></div>
+        <label for="createGroupAvatarInput">Choose</label>
+        <input id="createGroupAvatarInput" type="file" accept="image/*" hidden>
+      </div>
+      <div class="field"><label for="groupNameInput">Group name</label><input id="groupNameInput" type="text" placeholder="e.g. Hebrew Study Group" maxlength="80"></div>
+      <div class="field"><label for="groupDescInput">Description (optional)</label><textarea id="groupDescInput" rows="2" maxlength="200" placeholder="What is this group about?"></textarea></div>
+
+      <div class="field">
+        <label for="groupMemberSearch">Add members</label>
+        <div class="member-search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input id="groupMemberSearch" type="text" placeholder="Search classmates by name or course" autocapitalize="off" autocorrect="off" spellcheck="false">
+        </div>
+      </div>
+      <div id="groupMemberResults" class="group-member-results"></div>
+      <div id="groupMemberChips" class="group-member-chips"></div>
+
+      <div class="option-list">
+        <label class="switch-card">
+          <div class="switch-card-body">
+            <div class="switch-card-title"><span class="sw-ico">🔗</span>Members can invite others</div>
+            <div class="switch-card-desc">Anyone in this group can share the invite link.</div>
+          </div>
+          <input type="checkbox" id="createGroupCanInvite" checked>
+          <div class="switch-toggle"></div>
+        </label>
+        <label class="switch-card">
+          <div class="switch-card-body">
+            <div class="switch-card-title"><span class="sw-ico">✏️</span>Members can edit group info</div>
+            <div class="switch-card-desc">Allow non-admins to change the group name, photo and description.</div>
+          </div>
+          <input type="checkbox" id="createGroupCanEdit">
+          <div class="switch-toggle"></div>
+        </label>
+        <label class="switch-card">
+          <div class="switch-card-body">
+            <div class="switch-card-title"><span class="sw-ico">📢</span>Announcements only</div>
+            <div class="switch-card-desc">Only admins can post. Members read only.</div>
+          </div>
+          <input type="checkbox" id="createGroupAnnouncements">
+          <div class="switch-toggle"></div>
+        </label>
+      </div>
+      <button id="groupCreateBtn" class="auth-submit" type="button">Create group</button>
+      <div id="groupMessage" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GROUP SETTINGS ============ -->
+<div id="groupSettingsModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Group settings</strong>
+      <button id="groupSettingsClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="profile-avatar-wrap">
+        <div id="groupAvatarPreview" class="avatar-big group-avatar">G</div>
+        <label for="groupAvatarInput" class="avatar-upload-btn">Change group photo</label>
+        <input id="groupAvatarInput" type="file" accept="image/*" hidden>
+      </div>
+      <div class="field"><label for="groupSettingsName">Group name</label><input id="groupSettingsName" type="text" maxlength="80" placeholder="Group name"></div>
+      <div class="field"><label for="groupSettingsDesc">Description</label><textarea id="groupSettingsDesc" rows="3" maxlength="200" placeholder="What is this group about?"></textarea></div>
+      <div class="option-list">
+        <label class="switch-card">
+          <div class="switch-card-body">
+            <div class="switch-card-title"><span class="sw-ico">🔗</span>Members can invite others</div>
+            <div class="switch-card-desc">Anyone in this group can share the invite link.</div>
+          </div>
+          <input type="checkbox" id="groupMembersCanInvite">
+          <div class="switch-toggle"></div>
+        </label>
+        <label class="switch-card">
+          <div class="switch-card-body">
+            <div class="switch-card-title"><span class="sw-ico">✏️</span>Members can edit group info</div>
+            <div class="switch-card-desc">Allow non-admins to change the group name, photo and description.</div>
+          </div>
+          <input type="checkbox" id="groupMembersCanEdit">
+          <div class="switch-toggle"></div>
+        </label>
+        <label class="switch-card">
+          <div class="switch-card-body">
+            <div class="switch-card-title"><span class="sw-ico">📢</span>Announcements only</div>
+            <div class="switch-card-desc">Only admins can post. Members read only.</div>
+          </div>
+          <input type="checkbox" id="groupAnnouncementsOnly">
+          <div class="switch-toggle"></div>
+        </label>
+      </div>
+      <div class="field">
+        <label>Invite link</label>
+        <div class="invite-link-row">
+          <input id="groupInviteLink" type="text" readonly>
+          <button id="groupCopyInviteBtn" type="button" class="copy-btn">Copy</button>
+        </div>
+        <div class="invite-link-actions">
+          <button id="groupShareInviteBtn" type="button" class="text-button">Share…</button>
+          <button id="groupRegenInviteBtn" type="button" class="text-button danger-text">Reset link</button>
+        </div>
+      </div>
+      <button id="groupSaveBtn" class="auth-submit" type="button">Save changes</button>
+      <button id="groupLeaveBtn" class="auth-submit group-leave-btn" type="button">Leave group</button>
+      <button id="groupDeleteBtn" class="auth-submit status-delete-btn hidden" type="button">Delete group</button>
+      <div id="groupSettingsMessage" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ JOIN GROUP ============ -->
+<div id="joinGroupModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Join group</strong>
+      <button id="joinGroupClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="joinGroupBody">
+      <div class="search-empty">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PUBLIC PROFILE ============ -->
+<div id="publicProfileModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Profile</strong>
+      <button id="publicProfileClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="publicProfileBody">
+      <div class="search-empty">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CHAT INFO ============ -->
+<div id="chatInfoModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Conversation info</strong>
+      <button id="chatInfoClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body"><div id="chatInfoContent"></div></div>
+  </div>
+</div>
+
+<!-- ============ SCHEDULE ============ -->
+<div id="scheduleModal" class="modal hidden">
+  <div class="modal-card" style="max-width:420px;">
+    <div class="modal-head">
+      <strong>⏰ Schedule message</strong>
+      <button id="scheduleClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="schedulePreview" class="schedule-preview"></div>
+      <div class="field">
+        <label for="scheduleWhen">Send at</label>
+        <input id="scheduleWhen" type="datetime-local">
+      </div>
+      <div class="schedule-quick" id="scheduleQuick">
+        <button type="button" data-min="15">+15 min</button>
+        <button type="button" data-min="60">+1 hour</button>
+        <button type="button" data-min="180">+3 hours</button>
+        <button type="button" data-min="1440">Tomorrow</button>
+      </div>
+      <button id="scheduleConfirmBtn" class="auth-submit" type="button">Schedule</button>
+      <div id="scheduleMessage" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SAVED ============ -->
+<div id="savedModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>⭐ Saved messages</strong>
+      <button id="savedClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body"><div id="savedBody" class="saved-body"><div class="search-empty">Loading…</div></div></div>
+  </div>
+</div>
+
+<!-- ============ SCHEDULED ============ -->
+<div id="scheduledModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>⏰ Scheduled messages</strong>
+      <button id="scheduledClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body"><div id="scheduledBody" class="scheduled-body"><div class="search-empty">Loading…</div></div></div>
+  </div>
+</div>
+
+<!-- ============ FORWARD ============ -->
+<div id="forwardModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Forward to…</strong>
+      <button id="forwardClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <input id="forwardSearch" type="text" placeholder="Search a chat or person…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div id="forwardList" class="forward-list"></div>
+      <div id="forwardStatus" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ EDIT MESSAGE ============ -->
+<div id="editMessageModal" class="modal hidden">
+  <div class="modal-card" style="max-width:460px;">
+    <div class="modal-head">
+      <strong>Edit message</strong>
+      <button id="editMessageClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <textarea id="editMessageInput" rows="4" style="width:100%;padding:12px 14px;border:1.5px solid var(--border-strong);border-radius:12px;font-size:15px;font-family:inherit;resize:vertical;min-height:100px;" placeholder="Edit your message…"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+        <button id="editMessageSave" class="auth-submit" type="button" style="width:auto;padding:0 24px;">Save</button>
+      </div>
+      <div id="editMessageMsg" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SAVE TO JUSTGO NOTES ============ -->
+<div id="saveNoteModal" class="modal hidden">
+  <div class="modal-card" style="max-width:460px;">
+    <div class="modal-head">
+      <strong>📝 Save to JustGo Notes</strong>
+      <button id="saveNoteClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="saveNoteTitle">Title</label>
+        <input id="saveNoteTitle" type="text" maxlength="80" placeholder="Note title">
+      </div>
+      <div class="field">
+        <label for="saveNoteInput">Your note (optional)</label>
+        <textarea id="saveNoteInput" rows="3" maxlength="500" placeholder="Add your own thoughts…"></textarea>
+      </div>
+      <button id="saveNoteSave" class="auth-submit" type="button">Save</button>
+      <div id="saveNoteMsg" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PAY LINK ============ -->
+<div id="payLinkModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>My pay link</strong>
+      <button id="payLinkClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="wa-hint">Share this link. Anyone with a JustGo account can send you money in one tap.</p>
+      <div class="wa-link-box" id="payLinkBox">Loading…</div>
+      <div class="wa-link-actions">
+        <button id="payLinkCopy" class="wa-secondary-btn" type="button">Copy link</button>
+        <button id="payLinkShare" class="wa-secondary-btn" type="button">Share…</button>
+      </div>
+      <div class="wa-qr" id="payQR"></div>
+      <div id="payLinkMsg" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ WALLET UI ============ -->
+<div id="walletModal" class="modal hidden">
+  <div class="modal-card wallet-card">
+    <div class="modal-head">
+      <strong>JustGo Wallet</strong>
+      <button id="walletClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+
+    <div class="modal-body wallet-body">
+      <div class="wallet-balance-banner">
+        <div class="wbb-left">
+          <div class="wbb-label"><span class="wbb-dot"></span>Your balance</div>
+          <div class="wbb-amount" id="walletBalanceAmount">₹0.00</div>
+        </div>
+        <button id="walletShareLinkBtn" type="button" class="wbb-share" title="Share my pay link" aria-label="Share my pay link">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div id="walletPartnerBanner" class="wallet-partner-banner hidden"></div>
+
+      <div class="wallet-tabs" id="walletTabs">
+        <button data-wtab="send" class="active" type="button">Send</button>
+        <button data-wtab="request" type="button">Request</button>
+        <button data-wtab="history" type="button">History</button>
+        <button data-wtab="deposit" type="button">Deposit</button>
+        <button data-wtab="withdraw" type="button">Withdraw</button>
+      </div>
+
+      <div class="wallet-panel active" data-wpanel="send">
+        <div class="field">
+          <label for="walletSendSearch">To</label>
+          <input id="walletSendSearch" type="text" placeholder="Search a classmate by name or @username" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div id="walletSendResults" class="wallet-user-results"></div>
+        <div id="walletSendSelected" class="wallet-selected hidden"></div>
+        <div class="field">
+          <label for="walletSendAmount">Amount (₹)</label>
+          <input id="walletSendAmount" type="number" min="1" step="1" inputmode="decimal" placeholder="0">
+        </div>
+        <div class="wallet-quick-amounts">
+          <button type="button" data-amt="10">₹10</button>
+          <button type="button" data-amt="20">₹20</button>
+          <button type="button" data-amt="50">₹50</button>
+          <button type="button" data-amt="100">₹100</button>
+          <button type="button" data-amt="500">₹500</button>
+        </div>
+        <div id="walletSendFeePreview" class="wallet-fee-preview hidden"></div>
+        <div class="field">
+          <label for="walletSendNote">Note (optional)</label>
+          <input id="walletSendNote" type="text" maxlength="120" placeholder="e.g. for lunch">
+        </div>
+        <button id="walletSendBtn" class="auth-submit" type="button" disabled>Send money</button>
+        <div id="walletSendMsg" class="auth-message hidden"></div>
+      </div>
+
+      <div class="wallet-panel" data-wpanel="request">
+        <div class="field">
+          <label for="walletRequestSearch">From</label>
+          <input id="walletRequestSearch" type="text" placeholder="Search a classmate by name or @username" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div id="walletRequestResults" class="wallet-user-results"></div>
+        <div id="walletRequestSelected" class="wallet-selected hidden"></div>
+        <div class="field">
+          <label for="walletRequestAmount">Amount (₹)</label>
+          <input id="walletRequestAmount" type="number" min="1" step="1" inputmode="decimal" placeholder="0">
+        </div>
+        <div class="wallet-quick-amounts">
+          <button type="button" data-ramt="10">₹10</button>
+          <button type="button" data-ramt="20">₹20</button>
+          <button type="button" data-ramt="50">₹50</button>
+          <button type="button" data-ramt="100">₹100</button>
+          <button type="button" data-ramt="500">₹500</button>
+        </div>
+        <div id="walletRequestFeePreview" class="wallet-fee-preview hidden"></div>
+        <div class="field">
+          <label for="walletRequestNote">Note (optional)</label>
+          <input id="walletRequestNote" type="text" maxlength="120" placeholder="e.g. for the Hebrew book">
+        </div>
+        <button id="walletRequestBtn" class="auth-submit" type="button" disabled>Request money</button>
+        <div id="walletRequestMsg" class="auth-message hidden"></div>
+      </div>
+
+      <div class="wallet-panel" data-wpanel="history">
+        <div id="walletHistoryTitle" style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">All history</div>
+        <div class="wallet-summary-card" id="walletSummaryCard">
+          <div class="wsc-item"><span class="wsc-k">Sent this month</span><span class="wsc-v" id="wscSent">₹0.00</span></div>
+          <div class="wsc-item"><span class="wsc-k">Received</span><span class="wsc-v" id="wscRecv">₹0.00</span></div>
+          <div class="wsc-item"><span class="wsc-k">Net</span><span class="wsc-v" id="wscNet">₹0.00</span></div>
+        </div>
+        <div class="wallet-history-filter" id="walletHistoryFilter">
+          <button data-hf="all" class="active" type="button">All</button>
+          <button data-hf="sent" type="button">Sent</button>
+          <button data-hf="received" type="button">Received</button>
+          <button data-hf="requests" type="button">Requests</button>
+        </div>
+        <div id="walletHistoryList" class="wallet-history-list">
+          <div class="search-empty">Loading…</div>
+        </div>
+        <button id="walletDownloadCsvBtn" class="wallet-secondary-btn" type="button">Download statement (CSV)</button>
+      </div>
+
+      <div class="wallet-panel" data-wpanel="deposit">
+        <div class="wallet-info-note">
+          <strong>How deposits work</strong>
+          <span>Choose the fastest option below. Minimum deposit is <strong id="walletDepositMinNote">₹100</strong>.</span>
+        </div>
+        <div class="wallet-deposit-options">
+          <div class="wallet-deposit-option recommended" id="walletDepositPeerBtn">
+            <div class="wdo-head">
+              <strong>Option 1 — Ask a classmate</strong>
+              <span class="wdo-badge">Recommended</span>
+            </div>
+            <div class="wdo-body">
+              Many students have JustGo money they'd like to exchange for real rupees. Search for someone and ask them to transfer you money — they'll get real cash from you.
+            </div>
+            <div class="wdo-min">Fastest · Peer-to-peer · No admin wait</div>
+          </div>
+          <div class="wallet-deposit-option" id="walletDepositMsgAdminBtn">
+            <div class="wdo-head">
+              <strong>Option 2 — Message @admin</strong>
+            </div>
+            <div class="wdo-body">
+              JustGo does not link a payment gateway. Message @admin to get a QR code or bank account details. Send money there, upload the payment screenshot, and admin will credit your wallet.
+            </div>
+            <div class="wdo-min">Slower · Admin review · Only if adding ₹100+</div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="walletDepositAmount">Amount (₹)</label>
+          <input id="walletDepositAmount" type="number" min="1" step="1" inputmode="decimal" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="walletDepositNote">Note (optional)</label>
+          <input id="walletDepositNote" type="text" maxlength="120" placeholder="e.g. UPI ref 1234">
+        </div>
+        <div class="field">
+          <label>Payment screenshot</label>
+          <div class="wallet-file-row">
+            <label for="walletDepositFile" class="wallet-file-pick">Choose image</label>
+            <input id="walletDepositFile" type="file" accept="image/*" hidden>
+            <span id="walletDepositFileName" class="wallet-file-name"></span>
+          </div>
+          <div id="walletDepositPreview" class="wallet-file-preview hidden"></div>
+        </div>
+        <button id="walletDepositBtn" class="auth-submit" type="button">Submit deposit request</button>
+        <div id="walletDepositMsg" class="auth-message hidden"></div>
+      </div>
+
+      <div class="wallet-panel" data-wpanel="withdraw">
+        <div class="wallet-withdraw-notice">
+          <strong>⚠️ Withdrawal Notice</strong>
+          We want you to focus on using and transferring money within the JustGo Wallet. It's not locked, though! For special cases, we allow withdrawals to UPI/bank.
+        </div>
+
+        <div class="withdraw-methods" id="withdrawMethods">
+          <button type="button" class="withdraw-method" data-withdraw-method="upi">
+            <span class="wm-ic">📱</span>
+            <span class="wm-txt">
+              <strong>UPI</strong>
+              <span>Withdraw to any UPI ID (GPay, PhonePe, Paytm)</span>
+            </span>
+            <span class="wm-arrow">›</span>
+          </button>
+          <button type="button" class="withdraw-method" data-withdraw-method="bank">
+            <span class="wm-ic">🏦</span>
+            <span class="wm-txt">
+              <strong>Bank transfer</strong>
+              <span>Withdraw to your bank account (NEFT/IMPS)</span>
+            </span>
+            <span class="wm-arrow">›</span>
+          </button>
+          <button type="button" class="withdraw-method" data-withdraw-method="other">
+            <span class="wm-ic">💬</span>
+            <span class="wm-txt">
+              <strong>Something else</strong>
+              <span>Tell admin how you'd like to receive it</span>
+            </span>
+            <span class="wm-arrow">›</span>
+          </button>
+        </div>
+
+        <div class="wallet-info-note" style="margin-top:14px;">
+          <strong>How it works</strong>
+          <span>Pick a method above. We'll open a chat with @admin with your details pre-filled. Admin will verify and process within a day.</span>
+        </div>
+
+        <button id="walletWithdrawMsgAdminBtn" class="wallet-admin-msg-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+          Message @admin (general)
+        </button>
+        <div id="walletWithdrawMsg" class="auth-message hidden"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONFIRM SEND ============ -->
+<div id="moneyConfirmModal" class="modal hidden">
+  <div class="modal-card confirm-card">
+    <div class="modal-head">
+      <strong>Confirm transfer</strong>
+      <button id="moneyConfirmClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-hero">
+        <div id="moneyConfirmAvatar" class="avatar-big">U</div>
+        <div class="confirm-hero-name" id="moneyConfirmName">User</div>
+        <div class="confirm-hero-username" id="moneyConfirmUsername">@user</div>
+      </div>
+      <div class="confirm-amount" id="moneyConfirmAmount">₹0</div>
+      <div class="confirm-note-row">
+        <span class="cnr-label">Note</span>
+        <span class="cnr-value" id="moneyConfirmNote">—</span>
+      </div>
+      <div class="confirm-fee-row" id="moneyConfirmFeeRow">
+        <span>Transaction fee (<span id="feePctLabel">1</span>%)</span>
+        <strong id="moneyConfirmFeeValue">+₹0.00</strong>
+      </div>
+      <div class="confirm-total-row" id="moneyConfirmTotalRow">
+        <span>You pay</span>
+        <strong id="moneyConfirmTotalValue">₹0.00</strong>
+      </div>
+      <div class="confirm-note-row" style="margin-top:8px;">
+        <span class="cnr-label">They receive</span>
+        <span class="cnr-value" id="moneyConfirmNet">₹0</span>
+      </div>
+      <div class="confirm-actions">
+        <button id="moneyConfirmCancel" class="mbtn" type="button">Cancel</button>
+        <button id="moneyConfirmGo" class="mbtn primary" type="button">Pay ₹0</button>
+      </div>
+      <div id="moneyConfirmMsg" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RECEIPT ============ -->
+<div id="moneyReceiptModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Transaction receipt</strong>
+      <button id="moneyReceiptClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="moneyReceiptBody">
+      <div class="search-empty">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SPLIT BILL ============ -->
+<div id="splitBillModal" class="modal hidden">
+  <div class="modal-card split-bill-card">
+    <div class="modal-head">
+      <strong>Split bill</strong>
+      <button id="splitBillClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="split-step">
+        <div class="split-step-num">1</div>
+        <div class="split-step-content">
+          <label for="splitBillTotal">Total amount (₹)</label>
+          <input id="splitBillTotal" type="number" min="1" step="1" inputmode="decimal" placeholder="0">
+        </div>
+      </div>
+
+      <div class="split-step">
+        <div class="split-step-num">2</div>
+        <div class="split-step-content">
+          <label>Who pays?</label>
+          <div class="split-mode-toggle" id="splitBillMode">
+            <button data-smode="request" class="active" type="button">
+              <span class="smt-ic">←</span>
+              <span class="smt-txt"><strong>They pay me</strong><span>Send requests</span></span>
+            </button>
+            <button data-smode="pay" type="button">
+              <span class="smt-ic">→</span>
+              <span class="smt-txt"><strong>I pay for them</strong><span>Send money directly</span></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="split-step">
+        <div class="split-step-num">3</div>
+        <div class="split-step-content">
+          <div class="split-members-header">
+            <label>Split between</label>
+            <button type="button" id="splitSelectAll" class="split-select-all">Select all</button>
+          </div>
+          <div id="splitBillMembers" class="split-members"></div>
+        </div>
+      </div>
+
+      <div class="split-summary" id="splitSummary">
+        <div class="split-summary-row">
+          <span>Per person</span>
+          <strong id="splitPerPerson">₹0</strong>
+        </div>
+        <div class="split-summary-row fee-row">
+          <span>Fee per person (<span id="splitFeePct">1</span>%)</span>
+          <strong id="splitFeeAmount">+₹0</strong>
+        </div>
+        <div class="split-summary-row total-row">
+          <span>Each person pays</span>
+          <strong id="splitTotalPerPerson">₹0</strong>
+        </div>
+      </div>
+
+      <button id="splitBillGo" class="auth-submit" type="button">Create split</button>
+      <div id="splitBillMsg" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TIP ============ -->
+<div id="tipModal" class="modal hidden">
+  <div class="modal-card confirm-card">
+    <div class="modal-head">
+      <strong>Tip this message</strong>
+      <button id="tipClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="tip-preview" id="tipPreview">—</div>
+      <div class="field">
+        <label for="tipAmount">Amount (₹)</label>
+        <input id="tipAmount" type="number" min="1" step="1" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="wallet-quick-amounts">
+        <button type="button" data-tamt="10">₹10</button>
+        <button type="button" data-tamt="20">₹20</button>
+        <button type="button" data-tamt="50">₹50</button>
+        <button type="button" data-tamt="100">₹100</button>
+      </div>
+      <div id="tipFeePreview" class="wallet-fee-preview hidden"></div>
+      <button id="tipGo" class="auth-submit" type="button">Send tip</button>
+      <div id="tipMsg" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADMIN REVERSE ============ -->
+<div id="adminReverseModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Reverse transaction (admin)</strong>
+      <button id="adminReverseClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="adminReverseReason">Reason</label>
+        <input id="adminReverseReason" type="text" maxlength="200" placeholder="e.g. duplicate">
+      </div>
+      <button id="adminReverseGo" class="auth-submit status-delete-btn" type="button">Reverse</button>
+      <div id="adminReverseMsg" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ THEOGO SEARCH MODAL ============ -->
+<div id="theogoModal" class="modal hidden">
+  <div class="modal-card theogo-search-card">
+    <div class="modal-head">
+      <div class="theogo-head-brand">
+        <img src="https://static.wikitide.net/theogowiki/5/5d/TG.png" alt="TheoGo" class="theogo-logo">
+        <strong>Share TheoGo article</strong>
+      </div>
+      <button id="theogoClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="theogo-search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input id="theogoSearchInput" type="text" placeholder="Search articles on theogo.miraheze.org…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <button id="theogoSearchBtn" type="button" class="theogo-search-btn">Search</button>
+      </div>
+      <div class="theogo-hint">Search the TheoGo Wiki and share a rich preview directly in chat.</div>
+      <div id="theogoResults" class="theogo-results"></div>
+      <div id="theogoSelected" class="theogo-selected hidden"></div>
+      <div class="theogo-actions hidden" id="theogoActions">
+        <button id="theogoShareBtn" class="auth-submit" type="button">Share in chat</button>
+      </div>
+      <div id="theogoMessage" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GROUP FUNDRAISER MODAL ============ -->
+<div id="fundraiserModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong id="fundraiserModalTitle">Start a fundraiser</strong>
+      <button id="fundraiserClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="fundraiserBody">
+      <div class="search-empty">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONTRIBUTE ============ -->
+<div id="contributeModal" class="modal hidden">
+  <div class="modal-card confirm-card">
+    <div class="modal-head">
+      <strong>Contribute to fundraiser</strong>
+      <button id="contributeClose" type="button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="contribute-hero" id="contributeHero"></div>
+      <div class="field">
+        <label for="contributeAmount">Amount (₹)</label>
+        <input id="contributeAmount" type="number" min="1" step="1" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="wallet-quick-amounts">
+        <button type="button" data-camt="50">₹50</button>
+        <button type="button" data-camt="100">₹100</button>
+        <button type="button" data-camt="200">₹200</button>
+        <button type="button" data-camt="500">₹500</button>
+      </div>
+      <div id="contributeFeePreview" class="wallet-fee-preview hidden"></div>
+      <div class="field">
+        <label for="contributeNote">Message (optional)</label>
+        <input id="contributeNote" type="text" maxlength="120" placeholder="e.g. Happy to help!">
+      </div>
+      <label class="contribute-anon-toggle">
+        <input type="checkbox" id="contributeAnonymous">
+        <span>Contribute anonymously</span>
+      </label>
+      <button id="contributeGo" class="auth-submit" type="button">Contribute</button>
+      <div id="contributeMsg" class="auth-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MULTI-SELECT TOOLBAR ============ -->
+<div id="multiSelectToolbar" class="multi-select-toolbar hidden">
+  <div class="mst-info"><span id="mstCount">0</span> selected</div>
+  <div class="mst-actions">
+    <button type="button" data-action="copy" title="Copy all selected">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+    </button>
+    <button type="button" data-action="forward" title="Forward selected">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>
+    </button>
+    <button type="button" data-action="delete" title="Delete selected" class="danger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+    </button>
+    <button type="button" data-action="cancel" title="Cancel selection">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ============ OVERLAYS ============ -->
+<div id="chatListMenu" class="chat-list-menu hidden"></div>
+<div id="messageMenu" class="message-menu hidden"></div>
+<div id="quickReactions" class="quick-reactions hidden"></div>
+<div id="emojiPicker" class="emoji-picker hidden"></div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<!-- ============ SCRIPTS ============ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+        crossorigin="anonymous"
+        onerror="console.error('[JustGo] failed to load Supabase')"></script>
+
+<script defer src="core.js?v=20261016"
+        onerror="console.error('[JustGo] failed to load core.js')"></script>
+<script defer src="auth-and-profile.js?v=20261016"
+        onerror="console.error('[JustGo] failed to load auth-and-profile.js')"></script>
+<script defer src="wallet.js?v=20261016"
+        onerror="console.error('[JustGo] failed to load wallet.js')"></script>
+<script defer src="side.js?v=20261016"
+        onerror="console.error('[JustGo] failed to load side.js')"></script>
+<script defer src="sidego.js?v=20261016"
+        onerror="console.error('[JustGo] failed to load sidego.js')"></script>
+<script defer src="sidegogo.js?v=20261016"
+        onerror="console.error('[JustGo] failed to load sidegogo.js')"></script>
+<script defer src="sidegogogo.js?v=20261016"
+        onerror="console.error('[JustGo] failed to load sidegogogo.js')"></script>
+
+<script>
+  (function () {
+    var hidden = false;
+    function hideSplash() {
+      if (hidden) return;
+      hidden = true;
+      var s = document.getElementById("boot-splash");
+      if (s) s.classList.add("hidden");
+    }
+    var waited = 0;
+    var iv = setInterval(function () {
+      waited += 100;
+      if (window.__justgo_booted) { clearInterval(iv); hideSplash(); }
+      else if (waited >= 2500) { clearInterval(iv); hideSplash(); }
+    }, 100);
+    window.addEventListener("load", function () { setTimeout(hideSplash, 200); });
+  })();
+</script>
+
+<script defer src="/library/chat-book-card.js?v=2"></script>
+<script defer src="/library/bridge.js?v=9"></script>
+
+<script>
+(function () {
+  var LIBRARY_URL = "library/";
+  var CIRCLE_URL  = "circle/";
+
+  function goLibrary() { window.location.href = LIBRARY_URL; }
+  function goCircle()  { window.location.href = CIRCLE_URL; }
+  function goViceCity(){ window.location.href = "https://justgo.42web.io/vicecity"; }
+
+  document.addEventListener("click", function (e) {
+    var p = e.composedPath ? e.composedPath() : [];
+    for (var i = 0; i < p.length; i++) {
+      var n = p[i];
+      if (!n || n.nodeType !== 1) continue;
+
+      if (n.id === "viceCityChip") {
+        e.preventDefault(); e.stopPropagation();
+        goViceCity(); return;
+      }
+      if (n.id === "libraryChip") {
+        e.preventDefault(); e.stopPropagation();
+        goLibrary(); return;
+      }
+      if (n.id === "circleChip") {
+        e.preventDefault(); e.stopPropagation();
+        goCircle(); return;
+      }
+      if (n.matches && n.matches('button[data-menu="library"]')) {
+        e.preventDefault(); e.stopPropagation();
+        var m = document.getElementById("sidebarMenu");
+        if (m) m.classList.add("hidden");
+        goLibrary(); return;
+      }
+      if (n.matches && n.matches('button[data-menu="circle"]')) {
+        e.preventDefault(); e.stopPropagation();
+        var m = document.getElementById("sidebarMenu");
+        if (m) m.classList.add("hidden");
+        goCircle(); return;
+      }
+      if (n.matches && n.matches('button[data-action="library"]')) {
+        e.preventDefault(); e.stopPropagation();
+        var d = document.getElementById("composerDropup");
+        if (d) d.classList.add("hidden");
+        goLibrary(); return;
+      }
+      if (n.id === "openLibraryFromSettingsBtn") {
+        e.preventDefault(); e.stopPropagation();
+        var s = document.getElementById("settingsModal");
+        if (s) { s.classList.add("hidden"); s.classList.remove("show"); }
+        setTimeout(goLibrary, 60);
+        return;
+      }
+      if (n.dataset && n.dataset.openLibrary !== undefined) {
+        e.preventDefault(); e.stopPropagation();
+        goLibrary(); return;
+      }
+    }
+  }, true);
+
+  document.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "l" || e.key === "L")) {
+      e.preventDefault(); goLibrary();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "c" || e.key === "C")) {
+      e.preventDefault(); goCircle();
+    }
+  });
+
+  window.JustGoLibrary = window.JustGoLibrary || {
+    open: function () { goLibrary(); },
+    close: function () {}
+  };
+
+  console.log("[JustGo] inline bridge ready — library: " + LIBRARY_URL + " circle: " + CIRCLE_URL + " vicecity: https://justgo.42web.io/vicecity");
+})();
+</script>
+<script defer src="library/book-share-enhancer.js?v=3"></script>
+<script defer src="library/reader.js?v=6"></script>
+<script defer src="library/book-share-enhancer.js?v=4"></script>
+<script defer src="library/book-bubble-fix.js?v=4"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var btn = document.getElementById("openMyDataBtn");
+  if (btn) {
+    btn.addEventListener("click", function () {
+      closeSettingsModal();
+      setTimeout(function () {
+        if (typeof openMyDataModal === "function") openMyDataModal();
+        else console.warn("openMyDataModal not defined yet");
+      }, 80);
+    });
+  }
+});
+</script>
+<script defer src="ui-dialogs.js"></script>
+<script defer src="events.js"></script>
+<script defer src="fundraisers.js"></script>
+<script defer src="my-data.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var btn = document.getElementById("openMyDataBtn");
+  if (btn) {
+    btn.addEventListener("click", function () {
+      closeSettingsModal();
+      setTimeout(function () {
+        if (typeof openMyDataModal === "function") openMyDataModal();
+        else console.warn("openMyDataModal not defined yet");
+      }, 80);
+    });
+  }
+});
+</script>
+<script defer src="side-viewonce-patch.js"></script>
+<script defer src="vc.js"></script>
+</body>
+</html>

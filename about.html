@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" href="https://justgo.42web.io/icon-512.png"><link rel="apple-touch-icon" href="https://justgo.42web.io/icon-512.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About — JustGo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Inter, -apple-system, "Segoe UI", Arial, sans-serif;
+    background: #f4f6fa;
+    color: #172033;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 20px 80px; }
+  .hero { text-align: center; padding: 40px 20px 30px; margin-bottom: 30px; }
+  .mark {
+    width: 72px; height: 72px;
+    margin: 0 auto 18px;
+    border-radius: 18px;
+    background: #144097;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-weight: 800;
+    box-shadow: 0 12px 30px rgba(20,64,151,0.25);
+  }
+  h1 { font-size: 34px; margin: 0 0 10px; letter-spacing: -0.5px; }
+  .tagline { color: #667085; font-size: 15px; margin: 0 auto; max-width: 560px; }
+  .card {
+    background: #fff;
+    border: 1px solid #e4e8ef;
+    border-radius: 14px;
+    padding: 28px 30px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 18px rgba(20,35,60,0.04);
+  }
+  h2 {
+    font-size: 20px;
+    margin: 0 0 12px;
+    display: flex; align-items: center; gap: 10px;
+    letter-spacing: -0.2px;
+  }
+  h2 .badge {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: #eef3fc;
+    color: #144097;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  h3 { font-size: 15px; margin: 18px 0 8px; color: #144097; }
+  p, li { color: #47536b; font-size: 14.5px; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+  }
+  .feature {
+    padding: 16px;
+    border: 1px solid #edf0f4;
+    border-radius: 12px;
+    background: #fbfcfe;
+  }
+  .feature strong { display: block; margin-bottom: 4px; font-size: 14px; color: #172033; }
+  .feature span { font-size: 13px; color: #667085; line-height: 1.5; }
+  .feature .ico { font-size: 20px; margin-bottom: 8px; display: block; }
+  .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  .pill {
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: #eef3fc;
+    color: #144097;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .stack { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .stack span {
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: #f1f4f8;
+    color: #344054;
+    font-size: 12.5px;
+  }
+  .quote {
+    border-left: 3px solid #144097;
+    padding: 8px 16px;
+    margin: 14px 0;
+    background: #f7f9fc;
+    border-radius: 6px;
+    color: #47536b;
+    font-style: italic;
+  }
+  .warning {
+    display: flex;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    background: #fff8e1;
+    border: 1px solid #fde68a;
+    color: #854d0e;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-top: 14px;
+  }
+  .warning strong { color: #78350f; }
+  a { color: #144097; }
+  .back {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 18px;
+    background: #144097;
+    color: #fff !important;
+    text-decoration: none;
+    border-radius: 9px;
+    font-weight: 600;
+    font-size: 14px;
+    margin-top: 20px;
+  }
+  .back:hover { background: #10367f; }
+  footer { text-align: center; padding: 30px 20px; color: #8892a3; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+<div class="mark"><img src="https://justgo.42web.io/icon-512.png" alt="JustGo logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;display:block;"></div>
+    <h1>About JustGo</h1>
+    <p class="tagline">
+      A simple, private messaging platform built for college students — to share notes,
+      assignments, files, and stay in touch with classmates across every course and year.
+    </p>
+    <div style="margin-top:20px;">
+      <a href="index.html" class="back">← Back to JustGo</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="badge">💡</span> Why JustGo exists</h2>
+    <p>
+      Many students need to share assignments, ask doubts, and stay connected
+      with classmates. JustGo solves that with a lightweight web app that works in any
+      browser — no install, no phone number, no email required.
+    </p>
+    <div class="quote">
+      "Just open the website, log in with your username, and everything you need is right there."
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="badge">⏱️</span> Files auto-delete after 24 hours</h2>
+    <p>
+      To keep JustGo free for everyone, <strong>every file you send is automatically deleted
+      24 hours after it's uploaded.</strong> Text messages stay, but files don't.
+    </p>
+    <div class="warning">
+      <span>⚠️</span>
+      <div>
+        <strong>Please use files responsibly.</strong> If you need to keep a PDF, image, or
+        assignment longer than 24 hours, download it to your device before it expires.
+        Each file shows a countdown badge like <em>"Deletes in 18h"</em> so you're never
+        caught off guard.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="badge">🎯</span> What you can do</h2>
+    <div class="feature-grid">
+      <div class="feature">
+        <span class="ico">💬</span>
+        <strong>One-to-one chats</strong>
+        <span>Find anyone by name or course and message instantly.</span>
+      </div>
+      <div class="feature">
+        <span class="ico">👥</span>
+        <strong>Group chats</strong>
+        <span>Create study groups, class groups, or project teams.</span>
+      </div>
+      <div class="feature">
+        <span class="ico">📎</span>
+        <strong>Share files</strong>
+        <span>Send PDFs, images, assignments — up to 20 MB each, auto-deleted in 24h.</span>
+      </div>
+      <div class="feature">
+        <span class="ico">🔍</span>
+        <strong>Find classmates</strong>
+        <span>Search by username, display name, or your exact course & year.</span>
+      </div>
+      <div class="feature">
+        <span class="ico">✅</span>
+        <strong>Read receipts</strong>
+        <span>Know when your message was delivered and read (✓✓).</span>
+      </div>
+      <div class="feature">
+        <span class="ico">💭</span>
+        <strong>Status updates</strong>
+        <span>Post a short status visible to everyone. Replies open a chat.</span>
+      </div>
+      <div class="feature">
+        <span class="ico">😊</span>
+        <strong>Reactions</strong>
+        <span>React to messages with emojis instead of typing a reply.</span>
+      </div>
+      <div class="feature">
+        <span class="ico">↩️</span>
+        <strong>Reply & edit</strong>
+        <span>Quote a message when replying. Edit or delete your own messages.</span>
+      </div>
+      <div class="feature">
+        <span class="ico">🔔</span>
+        <strong>Browser notifications</strong>
+        <span>Get alerted even when the tab is in the background.</span>
+      </div>
+      <div class="feature">
+        <span class="ico">🟢</span>
+        <strong>Online status</strong>
+        <span>See who's online and when someone was last active.</span>
+      </div>
+      <div class="feature">
+        <span class="ico">🗂️</span>
+        <strong>Shared files tab</strong>
+        <span>See every file ever shared in a conversation in one place.</span>
+      </div>
+      <div class="feature">
+        <span class="ico">✍️</span>
+        <strong>Typing indicator</strong>
+        <span>Know when someone is typing a reply.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="badge">🔐</span> Security & privacy</h2>
+    <p>
+      JustGo is built directly on <strong>High-encrypted security</strong> and a secure backend. Here's how your data is protected:
+    </p>
+    <h3>Passwords</h3>
+    <ul>
+      <li>Passwords are <strong>never stored in plain text</strong>. They are hashed with
+        bcrypt — a one-way cryptographic function. Not even the developers can read them.</li>
+      <li>You control your password. There is no admin override.</li>
+    </ul>
+    <h3>Messages</h3>
+    <ul>
+      <li>Row Level Security (RLS) is enforced at the database level. Each user can only
+        read messages in conversations they are a member of.</li>
+      <li>No user can read messages from a conversation they aren't part of — not even
+        by manually changing the URL or guessing IDs.</li>
+      <li>Messages are stored in a PostgreSQL database with per-row access rules.</li>
+    </ul>
+    <h3>Files</h3>
+    <ul>
+      <li>Files are uploaded to a <strong>private bucket</strong>. They are only accessible
+        via short-lived signed URLs (valid for 1 hour).</li>
+      <li>No permanent public URLs exist. Even if someone copies a link, it expires.</li>
+      <li>Only members of the conversation can generate a signed URL.</li>
+      <li><strong>Files are automatically deleted 24 hours after upload</strong> to keep
+        JustGo free for everyone.</li>
+    </ul>
+    <h3>Your account</h3>
+    <ul>
+      <li>No real email is required — your username is tied to an internal identifier.</li>
+      <li>You can update your display name, photo, and course any time from your profile.</li>
+      <li>Logging out removes your session from the browser immediately.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2><span class="badge">🎓</span> Built Specially for our college</h2>
+    <p>
+      Signup includes your <strong>course and year</strong> from the following list:
+    </p>
+    <div class="meta">
+      <span class="pill">Bth (ATA) — 1st to 4th</span>
+      <span class="pill">Bth (Senate) — 1st to 3rd</span>
+      <span class="pill">BD — 1st to 4th</span>
+      <span class="pill">Mdiv — 1st to 3rd</span>
+      <span class="pill">Cth</span>
+      <span class="pill">Pre-Mth</span>
+      <span class="pill">Mth — 1st & 2nd</span>
+    </div>
+    <p style="margin-top:14px;">
+      Once you sign up, your classmates can find you by searching your username, display name,
+      or your course & year. This means <strong>every student in every batch and stream is
+      reachable in one place</strong>.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2><span class="badge">📖</span> How to use it</h2>
+    <ol>
+      <li><strong>Sign up</strong> with a username, display name, and your course & year.</li>
+      <li><strong>Search</strong> for a classmate by name or course — or create a group for your study team.</li>
+      <li><strong>Start chatting.</strong> Send text, files, replies, and reactions.</li>
+      <li><strong>Post a status</strong> to let everyone know what you're working on.</li>
+      <li><strong>Download files you need</strong> before they auto-delete in 24 hours.</li>
+      <li><strong>Stay connected</strong> with browser notifications for new messages.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2><span class="badge">✨</span> The idea behind it</h2>
+    <p>
+      Every student need a place to talk to their classmates without needing a phone,
+      a personal email, or a paid app. JustGo is that place — small, focused, and
+      built to be used.
+    </p>
+    <div class="quote">
+      The goal is simple: <strong>make it easier for students to help each other.</strong>
+    </div>
+    <a href="index.html" class="back">Open JustGo →</a>
+  </div>
+
+  <footer>
+    JustGo · Built for you
+  </footer>
+
+</div>
+</body>
+</html>

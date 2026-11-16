@@ -1,0 +1,33 @@
+{
+  "background_color": "#ffffff",
+  "description": "JustGo — a private messaging platform for college students. Chat, share files, and send money with classmates.",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "JustGo",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "JustGo",
+  "start_url": "/",
+  "theme_color": "#1652c4",
+  "icons": [
+    {
+      "src": "https://justgo.42web.io/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "isSquare": true,
+      "isPng": true,
+      "isWebp": false,
+      "isJpg": false,
+      "width": 512,
+      "is512x512": true,
+      "is256x256": false,
+      "is192x192": false
+    }
+  ],
+  "id": "justgo",
+  "lang": "en",
+  "categories": [
+    "social",
+    "social networking"
+  ]
+}

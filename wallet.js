@@ -1,1871 +1,409 @@
-/* =========================================================================
-   JustGo — wallet.js (v15)
-   Wallet, money transfers, requests, deposits, withdrawals, split bill,
-   tips, receipts, fundraisers, TheoGo, CSV export, pay links.
+/*! BDStudyMaterial portal v1.0
+ * Wiki.js-style knowledge portal drawn over the (untouched) JustGo app.
+ * Install: put this file next to index.html and add ONE line inside <head>:
+ *   <script src="wiki.js?v=1"></script>
+ * Everything lives in a Shadow DOM, so JustGo's CSS/JS and this portal cannot affect each other.
+ * Nothing about hidden/visible state is stored anywhere: a refresh always shows the portal.
+ */
+(function () {
+'use strict';
+if (window.__bds) return; window.__bds = 1;
 
-   Changelog v14 → v15:
-     • Removed "1% fee (0.5% premium)" subtitle from balance banner.
-     • New pay-link modal with QR code + share.
-     • Withdraw tab rewritten: shows methods and pre-fills message to admin.
-     • Split bill: no one selected by default, per-person edit input, ticket
-       CSS classes rebuilt cleanly.
-     • sendMoneyRpc now supports optional tip metadata (message_id).
-     • Version tag updated.
-   ========================================================================= */
+var C = { api: 'https://theogo.miraheze.org/w/api.php', origin: 'https://theogo.miraheze.org', ttl: 6e5, page: 12, returnBtn: true, reshowMs: 3e5 };
+var CATS = [
+ ['theology','cross','Theology','Doctrine, God and the study of faith.',['theology','doctrine','God','revelation']],
+ ['biblical','book','Biblical Studies','Interpretation, canon and background of Scripture.',['bible','hermeneutics','canon','exegesis']],
+ ['ot','scroll','Old Testament','Law, history, wisdom and the prophets.',['Old Testament','Pentateuch','prophets','Psalms']],
+ ['nt','star','New Testament','Gospels, Acts and the apostolic letters.',['New Testament','gospel','Paul','epistle']],
+ ['ct','church','Christian Theology','Trinity, Christology, salvation and the church.',['Trinity','Christology','salvation','church']],
+ ['ch','landmark','Church History','From the early church to the modern era.',['church history','Reformation','early church','council']],
+ ['eth','scales','Christian Ethics','Moral theology and Christian life.',['Christian ethics','morality','sin','virtue']],
+ ['lang','bubbles','Biblical Languages','Hebrew, Greek and Aramaic.',['Hebrew','Greek','Aramaic','grammar','vocabulary']],
+ ['asg','note','Assignments','Essays, exam notes and coursework.',['assignment','essay','exam','question']],
+ ['res','library','Study Resources','Syllabi, notes and reading lists.',['syllabus','notes','study','book']]
+].map(function (a) { return { id: a[0], i: a[1], n: a[2], d: a[3], q: a[4] }; });
 
-/* =========================================================
-   WALLET CHIP
-   ========================================================= */
-function initWalletChipHover() {
-  const chip = elements.walletChip;
-  if (!chip) return;
-  chip.addEventListener('click', () => openWalletModal({ mode: 'header' }));
+var R, host, ret, tm, cur = null, stack = [], tok = 0, mem = {}, vis = true, ino = [], _si = null;
+var $ = function (s) { return R.querySelector(s); };
+var h = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+var rj = function (o) { return h(JSON.stringify(o)); };
+function ls(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k)); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+function fd(t) { try { return new Date(t).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return ''; } }
+
+/* ---------- Colourful SVG icons (sprite; no emojis) ---------- */
+function G(id, a, b) { return '<linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/></linearGradient>'; }
+function S(id, body) { return '<symbol id="i-' + id + '" viewBox="0 0 24 24">' + body + '</symbol>'; }
+var BOOK = '<path d="M2 5.5C5 4 8.5 4 12 6v14c-3.5-2-7-2-10-.5z" fill="url(#gB)"/><path d="M22 5.5C19 4 15.5 4 12 6v14c3.5-2 7-2 10-.5z" fill="#dbeafe" stroke="#3b82f6" stroke-width=".8"/><path d="M15.5 4.4v6.6l2-1.5 2 1.5V4.8z" fill="url(#gO)"/>';
+var SPR = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>' + G('gB', '#60a5fa', '#1e40af') + G('gG', '#fde047', '#f59e0b') + G('gP', '#c084fc', '#6d28d9') + G('gR', '#fb7185', '#be123c') + G('gT', '#5eead4', '#0f766e') + G('gO', '#fdba74', '#ea580c') + '</defs>' +
+ S('home', '<path d="M3 11.5 12 3l9 8.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="url(#gB)"/><path d="M1.8 11.8 12 2.4l10.2 9.4" fill="none" stroke="url(#gO)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 21v-5.5a2.5 2.5 0 0 1 5 0V21z" fill="#fde047"/>') +
+ S('cross', '<circle cx="12" cy="12" r="10.5" fill="#fde68a" opacity=".6"/><rect x="9.6" y="2.5" width="4.8" height="19" rx="1.6" fill="url(#gP)"/><rect x="4.5" y="7.5" width="15" height="4.8" rx="1.6" fill="url(#gP)"/>') +
+ S('book', BOOK) + S('logo', '<rect width="24" height="24" rx="6" fill="#fff"/><g transform="translate(3.6 3.8) scale(.7)">' + BOOK + '</g>') +
+ S('scroll', '<rect x="5" y="4" width="14" height="16" rx="1.5" fill="#fde7b0"/><rect x="3" y="2.2" width="18" height="4.2" rx="2.1" fill="url(#gO)"/><rect x="3" y="17.6" width="18" height="4.2" rx="2.1" fill="url(#gO)"/><path d="M8 10h8M8 13h8" stroke="#b45309" stroke-width="1.4" stroke-linecap="round"/>') +
+ S('star', '<path d="m12 2 2.9 6.3 6.9.8-5.1 4.7 1.4 6.8-6.1-3.4-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z" fill="url(#gG)" stroke="#d97706" stroke-width="1" stroke-linejoin="round"/>') +
+ S('church', '<path d="M12 .8v4.2M10 2.6h4" stroke="#6d28d9" stroke-width="1.8" stroke-linecap="round"/><path d="M12 5.2 17.5 10H6.5z" fill="url(#gR)"/><rect x="5" y="10" width="14" height="11" rx="1" fill="url(#gB)"/><circle cx="12" cy="12.6" r="1.4" fill="#fde047"/><path d="M10 21v-4.2a2 2 0 0 1 4 0V21z" fill="#fde047"/>') +
+ S('landmark', '<path d="M1.5 9 12 2.5 22.5 9z" fill="url(#gO)"/><rect x="4" y="10.5" width="3" height="8" fill="#fde7b0" stroke="#d97706" stroke-width=".8"/><rect x="10.5" y="10.5" width="3" height="8" fill="#fde7b0" stroke="#d97706" stroke-width=".8"/><rect x="17" y="10.5" width="3" height="8" fill="#fde7b0" stroke="#d97706" stroke-width=".8"/><rect x="2" y="18.8" width="20" height="3" rx="1" fill="url(#gB)"/>') +
+ S('scales', '<path d="M12 4.5V19M7 20.5h10" stroke="#0f766e" stroke-width="2" stroke-linecap="round"/><path d="M3.5 7.5h17" stroke="#d97706" stroke-width="2" stroke-linecap="round"/><path d="M4.5 8 1.8 12.8M4.5 8l2.7 4.8M19.5 8l-2.7 4.8M19.5 8l2.7 4.8" stroke="#0f766e" stroke-width="1"/><path d="M1.2 12.8h6.6a3.3 3.3 0 0 1-6.6 0zM16.2 12.8h6.6a3.3 3.3 0 0 1-6.6 0z" fill="url(#gT)"/><circle cx="12" cy="4.4" r="2" fill="url(#gG)"/>') +
+ S('bubbles', '<path d="M3 3h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8.5L5 16v-3H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="url(#gB)"/><path d="M9 10h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3H9a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z" fill="url(#gO)" opacity=".95"/><path d="M4.5 6.5h8M4.5 9h5M11 14h8M11 17h5" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>') +
+ S('note', '<rect x="4" y="4" width="16" height="18" rx="2.5" fill="url(#gT)"/><rect x="6.4" y="7" width="11.2" height="13" rx="1" fill="#fff"/><rect x="8.5" y="2" width="7" height="4" rx="1.5" fill="#fde047" stroke="#d97706"/><path d="M8.5 11h7M8.5 14h7M8.5 17h4" stroke="#0f766e" stroke-width="1.4" stroke-linecap="round"/>') +
+ S('library', '<rect x="3" y="5" width="4.6" height="16" rx="1" fill="url(#gR)"/><rect x="8.6" y="3" width="4.6" height="18" rx="1" fill="url(#gB)"/><rect x="14.6" y="6" width="4.6" height="15" rx="1" fill="url(#gG)" transform="rotate(12 16.9 21)"/><rect x="1.5" y="20.5" width="21" height="2" rx="1" fill="#92400e"/>') +
+ S('dice', '<rect x="3" y="3" width="18" height="18" rx="4.5" fill="url(#gP)"/><g fill="#fff"><circle cx="8" cy="8" r="1.7"/><circle cx="16" cy="8" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="8" cy="16" r="1.7"/><circle cx="16" cy="16" r="1.7"/></g>') +
+ S('clock', '<circle cx="12" cy="12" r="10.5" fill="url(#gB)"/><circle cx="12" cy="12" r="8.3" fill="#fff"/><path d="M12 6.5V12l3.6 2.2" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>') +
+ S('search', '<circle cx="10" cy="10" r="7" fill="#dbeafe" stroke="url(#gB)" stroke-width="2.6"/><path d="m15.6 15.6 6 6" stroke="url(#gO)" stroke-width="3.2" stroke-linecap="round"/>') +
+ S('globe', '<circle cx="12" cy="12" r="10.5" fill="url(#gB)"/><path d="M5.5 8c2-2.6 4.4-2 5.6-.6s-1 3.4-3.2 3.4-3.4-.4-2.4-2.8zM13 14.2c2.2-1 5.2 0 5 2.2s-2.2 4-4.2 3-2.2-4-.8-5.2z" fill="#4ade80"/><ellipse cx="12" cy="12" rx="4.2" ry="10.5" fill="none" stroke="#fff" opacity=".55"/>') +
+ S('flask', '<path d="M9 2h6v2h-1v5l6 10.4A2 2 0 0 1 18.3 22H5.7A2 2 0 0 1 4 19.4L10 9V4H9z" fill="#e0f2fe" stroke="#0369a1" stroke-width="1.4" stroke-linejoin="round"/><path d="M7.6 15h8.8l3 5.2a1.2 1.2 0 0 1-1 1.8H5.6a1.2 1.2 0 0 1-1-1.8z" fill="url(#gT)"/><circle cx="10.5" cy="18" r="1" fill="#fff"/><circle cx="14" cy="19" r=".8" fill="#fff"/>') +
+ S('chat', '<path d="M4 3h16a2.5 2.5 0 0 1 2.5 2.5v9A2.5 2.5 0 0 1 20 17h-8l-5.5 4.5V17H4a2.5 2.5 0 0 1-2.5-2.5v-9A2.5 2.5 0 0 1 4 3z" fill="#fff"/><circle cx="7.5" cy="10" r="1.6" fill="#ef4444"/><circle cx="12" cy="10" r="1.6" fill="#f59e0b"/><circle cx="16.5" cy="10" r="1.6" fill="#22c55e"/>') +
+ S('theme', '<circle cx="12" cy="12" r="10.5" fill="#312e81"/><path d="M12 1.5a10.5 10.5 0 0 1 0 21z" fill="url(#gG)"/><circle cx="7" cy="8" r="1" fill="#fff"/><circle cx="8.5" cy="15" r=".7" fill="#fff"/>') +
+ S('menu', '<path d="M4 6h16" stroke="#fde047" stroke-width="2.4" stroke-linecap="round"/><path d="M4 12h16" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="M4 18h16" stroke="#93c5fd" stroke-width="2.4" stroke-linecap="round"/>') +
+ S('doc', '<path d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="url(#gB)"/><path d="M14 2v5h5z" fill="#93c5fd"/><path d="M8 12h8M8 15h8M8 18h5" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>') +
+ S('folder', '<path d="M2 6a2 2 0 0 1 2-2h5l2 2.5h9a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" fill="url(#gG)"/><path d="M2 10h20v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" fill="#fbbf24"/>') +
+ S('link', '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" fill="none" stroke="url(#gB)" stroke-width="2.6" stroke-linecap="round"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="url(#gO)" stroke-width="2.6" stroke-linecap="round"/>') +
+ S('ok', '<circle cx="12" cy="12" r="10.5" fill="#22c55e"/><path d="m7 12.5 3.2 3.2L17 9" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>') +
+ S('bad', '<circle cx="12" cy="12" r="10.5" fill="#ef4444"/><path d="m8 8 8 8M16 8l-8 8" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>') + '</svg>';
+function ic(n, s) { s = s || 20; return '<svg class="ic" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-' + n + '"/></svg>'; }
+
+/* ---------- API (CORS via origin=*, timeout, retry, memory+session cache) ---------- */
+function tf(u, n) {
+  var ac = new AbortController(), t = setTimeout(function () { ac.abort(); }, 15000);
+  return fetch(u, { signal: ac.signal }).then(function (r) { clearTimeout(t); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .catch(function (e) { clearTimeout(t); if (n > 0) return new Promise(function (ok) { setTimeout(ok, 600); }).then(function () { return tf(u, n - 1); }); throw e; });
 }
-
-/* =========================================================
-   WALLET DATA
-   ========================================================= */
-let _refreshWalletInFlight = null;
-let _refreshWalletQueued = false;
-
-async function loadWallet() {
-  if (!currentUser) return;
-  try {
-    const { data, error } = await db.rpc("get_my_wallet");
-    if (error) throw error;
-    if (data) applyWalletData(data);
-  } catch (e) {}
-  await refreshWalletSummary();
-}
-
-function applyWalletData(data) {
-  if (!data) return;
-  if (data.wallet) {
-    myWallet = {
-      balance: Number(data.wallet.balance || 0),
-      currency: data.wallet.currency || 'INR',
-      is_frozen: !!data.wallet.is_frozen
-    };
-  }
-  walletTransactions     = data.transactions       || [];
-  walletRequestsIncoming = data.requests_incoming  || [];
-  walletRequestsOutgoing = data.requests_outgoing  || [];
-  updateWalletChipUI();
-  if (elements.walletModal && !elements.walletModal.classList.contains('hidden')) {
-    renderWalletHistory();
-  }
-}
-
-async function refreshWalletData() {
-  if (_refreshWalletInFlight) {
-    _refreshWalletQueued = true;
-    return _refreshWalletInFlight;
-  }
-  _refreshWalletInFlight = loadWallet().finally(() => {
-    _refreshWalletInFlight = null;
-    if (_refreshWalletQueued) {
-      _refreshWalletQueued = false;
-      refreshWalletData();
-    }
+function api(p, ttl) {
+  p = Object.assign({ format: 'json', formatversion: 2, origin: '*' }, p);
+  var qs = new URLSearchParams(p).toString(), k = 'bds_c:' + qs, life = ttl || C.ttl, m = mem[k];
+  if (m && Date.now() - m.t < life) return Promise.resolve(m.d);
+  try { var s = JSON.parse(sessionStorage.getItem(k)); if (s && Date.now() - s.t < life) { mem[k] = s; return Promise.resolve(s.d); } } catch (e) {}
+  return tf(C.api + '?' + qs, 2).then(function (d) {
+    if (d.error) { var er = new Error(d.error.info); er.code = d.error.code; throw er; }
+    var o = { t: Date.now(), d: d }; mem[k] = o; try { sessionStorage.setItem(k, JSON.stringify(o)); } catch (e) {} return d;
   });
-  return _refreshWalletInFlight;
 }
+function info() { return _si || (_si = api({ action: 'query', meta: 'siteinfo', siprop: 'statistics|rightsinfo|general' }, 36e5).catch(function () { _si = null; return null; })); }
 
-async function refreshWalletSummary() {
-  try {
-    const { data } = await db.rpc("get_wallet_monthly_summary");
-    if (data && elements.wscSent) {
-      elements.wscSent.textContent = '₹' + formatMoney(data.sent);
-      elements.wscRecv.textContent = '₹' + formatMoney(data.received);
-      const net = Number(data.net || 0);
-      elements.wscNet.textContent = (net >= 0 ? '+' : '−') + '₹' + formatMoney(Math.abs(net));
-      elements.wscNet.style.color = net >= 0 ? 'var(--success)' : 'var(--danger)';
+/* ---------- Sanitiser for externally retrieved HTML (whitelist) ---------- */
+var BAD = 'script,style,iframe,object,embed,form,input,button,textarea,select,svg,math,link,meta,base,noscript,template,audio,video,source,canvas,frame,frameset,applet,.mw-editsection,.noprint,.mw-empty-elt,.printfooter,.catlinks,.mw-collapsible-toggle';
+var OK = new Set('p div span a b i u em strong sup sub h1 h2 h3 h4 h5 h6 ul ol li dl dt dd table thead tbody tfoot tr th td caption colgroup col img figure figcaption blockquote pre code br hr small big cite abbr s strike del ins mark center q kbd var samp ruby rt rp bdi bdo details summary'.split(' '));
+var AT = new Set('href src alt title class id colspan rowspan width height lang dir scope start type headers'.split(' '));
+var okHost = function (u) { return /^https?:$/.test(u.protocol) && /(^|\.)(wikitide\.net|miraheze\.org)$/.test(u.hostname); };
+function fix(e, t) {
+  var ss = t === 'img' ? e.getAttribute('srcset') : null;
+  Array.prototype.slice.call(e.attributes).forEach(function (a) { if (!AT.has(a.name)) e.removeAttribute(a.name); });
+  if (e.className && typeof e.className === 'string') e.className = e.className.replace(/[^\w\- ]/g, '');
+  if (e.id) e.id = 'w-' + e.id;
+  if (t === 'img') {
+    var u; try { u = new URL(e.getAttribute('src') || '', C.origin); } catch (x) { e.remove(); return; }
+    if (!okHost(u)) { e.replaceWith(document.createTextNode(e.alt ? '[' + e.alt + ']' : '')); return; }
+    e.setAttribute('src', u.href);
+    if (ss) e.setAttribute('srcset', ss.split(',').map(function (x) { var p = x.trim().split(/\s+/); try { var q = new URL(p[0], C.origin); if (!okHost(q)) return ''; p[0] = q.href; } catch (_) { return ''; } return p.join(' '); }).filter(Boolean).join(', '));
+    e.setAttribute('loading', 'lazy'); e.setAttribute('decoding', 'async'); e.setAttribute('referrerpolicy', 'no-referrer'); return;
+  }
+  if (t !== 'a') return;
+  var hr = e.getAttribute('href'); if (hr == null) return;
+  if (hr[0] === '#') { var id = hr.slice(1); try { id = decodeURIComponent(id); } catch (x) {} e.setAttribute('data-anc', 'w-' + id); e.setAttribute('href', '#'); return; }
+  var l; try { l = new URL(hr, C.origin); } catch (x) { e.removeAttribute('href'); return; }
+  if (!/^(https?:|mailto:)$/.test(l.protocol)) { e.removeAttribute('href'); return; }
+  var ti = null;
+  if (l.origin === C.origin) {
+    if (l.searchParams.get('redlink') === '1') { var sp = document.createElement('span'); sp.className = 'missing'; sp.append.apply(sp, e.childNodes); e.replaceWith(sp); return; }
+    if (l.pathname.indexOf('/wiki/') === 0) { ti = l.pathname.slice(6); try { ti = decodeURIComponent(ti); } catch (x) {} }
+    else if (l.pathname === '/w/index.php' && l.searchParams.get('title') && (!l.searchParams.get('action') || l.searchParams.get('action') === 'view')) ti = l.searchParams.get('title');
+    if (ti) {
+      ti = ti.replace(/_/g, ' ');
+      if (/^Category:/i.test(ti)) { e.setAttribute('data-r', JSON.stringify({ t: 'tcat', a: ti.slice(9), tok: '', st: [] })); e.setAttribute('href', '#'); return; }
+      if (!/^(File|Image|Media|Special|Template|Help|Talk|User|User talk|MediaWiki|Module|Project):/i.test(ti)) { e.setAttribute('data-r', JSON.stringify({ t: 'article', a: ti + (l.hash || ''), st: [] })); e.setAttribute('href', '#'); return; }
     }
-  } catch (e) {}
-}
-
-function updateWalletChipUI() {
-  if (elements.walletChipBalance) elements.walletChipBalance.textContent = '₹' + formatMoney(myWallet.balance);
-  if (elements.walletBalanceAmount) elements.walletBalanceAmount.textContent = '₹' + formatMoney(myWallet.balance);
-  if (elements.walletChipBadge) {
-    if (walletUnreadBadge > 0) {
-      elements.walletChipBadge.textContent = walletUnreadBadge > 9 ? '9+' : String(walletUnreadBadge);
-      elements.walletChipBadge.classList.remove('hidden');
-    } else elements.walletChipBadge.classList.add('hidden');
   }
-  if (elements.walletChip) elements.walletChip.classList.toggle('frozen', !!myWallet.is_frozen);
+  e.setAttribute('href', l.href); e.setAttribute('target', '_blank'); e.setAttribute('rel', 'noopener noreferrer nofollow');
+  if (l.origin !== C.origin) e.classList.add('ext');
 }
-
-function subscribeWalletRealtime() {
-  if (walletRealtimeChannel) {
-    try { db.removeChannel(walletRealtimeChannel); } catch (e) {}
-    walletRealtimeChannel = null;
-  }
-  if (!currentUser) return;
-
-  walletRealtimeChannel = db.channel("wallet-" + currentUser.id + "-" + Date.now());
-
-  const onWalletChange = () => refreshWalletData();
-  const onTxnInsert = payload => {
-    const t = payload.new; if (!t) return;
-    if (t.from_user === currentUser.id || t.to_user === currentUser.id) {
-      walletUnreadBadge++;
-      updateWalletChipUI();
-      refreshWalletData();
-      const iAmReceiver = t.to_user === currentUser.id;
-      if (iAmReceiver && t.status === 'completed') {
-        showToast('💰 Received ₹' + formatMoney(t.amount), 'success');
-        if (settings.sound) playNotificationSound();
-      }
-    }
-  };
-  const onRequestChange = payload => {
-    const r = payload.new || payload.old; if (!r) return;
-    if (r.from_user === currentUser.id || r.to_user === currentUser.id) {
-      refreshWalletData();
-      if (payload.eventType === 'INSERT' && r.to_user === currentUser.id && r.status === 'pending') {
-        walletUnreadBadge++;
-        updateWalletChipUI();
-        showToast('💸 Money request: ₹' + formatMoney(r.amount), 'success');
-      }
-    }
-  };
-
-  walletRealtimeChannel
-    .on("postgres_changes", { event: "*", schema: "public", table: "justgo_wallets", filter: "user_id=eq." + currentUser.id }, onWalletChange)
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "justgo_transactions" }, onTxnInsert)
-    .on("postgres_changes", { event: "*", schema: "public", table: "money_requests" }, onRequestChange)
-    .subscribe();
-}
-
-function cleanupWalletRealtime() {
-  if (walletRealtimeChannel) {
-    try { db.removeChannel(walletRealtimeChannel); } catch (e) {}
-    walletRealtimeChannel = null;
-  }
-}
-
-/* =========================================================
-   WALLET MODAL
-   ========================================================= */
-async function openWalletModal(opts) {
-  opts = opts || {};
-  walletUnreadBadge = 0;
-  updateWalletChipUI();
-  if (!currentUser) return showToast("Please sign in first.", "error");
-
-  if (opts.mode === 'dm' && opts.partner) {
-    walletMode = 'dm';
-    walletDmPartner = opts.partner;
-  } else if (opts.sendToUser && !opts.mode) {
-    walletMode = 'dm';
-    walletDmPartner = opts.sendToUser;
-  } else if (opts.requestFromUser && !opts.mode) {
-    walletMode = 'dm';
-    walletDmPartner = opts.requestFromUser;
-  } else {
-    walletMode = 'header';
-    walletDmPartner = null;
-  }
-
-  openModal(elements.walletModal);
-  applyWalletModeUI();
-  switchWalletTab('send');
-  resetWalletSendPanel();
-  resetWalletRequestPanel();
-  resetWalletDepositPanel();
-  resetWalletWithdrawPanel();
-  renderWalletHistory();
-  refreshWalletSummary();
-
-  if (opts.sendToUser)     prefillWalletSend(opts.sendToUser);
-  if (opts.requestFromUser) { switchWalletTab('request'); prefillWalletRequest(opts.requestFromUser); }
-  if (opts.amount && elements.walletSendAmount) {
-    elements.walletSendAmount.value = opts.amount;
-    updateWalletSendButton();
-  }
-}
-
-function closeWalletModal() {
-  closeModal(elements.walletModal);
-  walletMode = 'header';
-  walletDmPartner = null;
-}
-
-let _partnerBannerLastKey = "";
-
-function applyWalletModeUI() {
-  const tabsEl = elements.walletTabs;
-  if (!tabsEl) return;
-  const tabs = tabsEl.querySelectorAll('button[data-wtab]');
-  const partnerBanner = document.getElementById('walletPartnerBanner');
-  const historyTitle = document.getElementById('walletHistoryTitle');
-
-  if (walletMode === 'dm') {
-    tabs.forEach(t => {
-      const w = t.dataset.wtab;
-      t.style.display = (w === 'deposit' || w === 'withdraw') ? 'none' : '';
+function clean(html) {
+  var r = new DOMParser().parseFromString(html, 'text/html').body;
+  r.querySelectorAll(BAD).forEach(function (e) { e.remove(); });
+  (function w(n) {
+    Array.prototype.slice.call(n.children).forEach(function (e) {
+      var t = e.tagName.toLowerCase(); w(e);
+      if (!OK.has(t)) { e.replaceWith.apply(e, e.childNodes); return; }
+      fix(e, t);
     });
-    if (partnerBanner && walletDmPartner) {
-      const key = (walletDmPartner.id || "") + "|" + (walletDmPartner.display_name || "") + "|" +
-                  (walletDmPartner.avatar_url || "") + "|" + (walletDmPartner.is_premium ? "1" : "0");
-      partnerBanner.classList.remove('hidden');
-      if (key !== _partnerBannerLastKey) {
-        _partnerBannerLastKey = key;
-        const initial = (walletDmPartner.display_name || walletDmPartner.username || 'U').charAt(0).toUpperCase();
-        const safeAvatar = walletDmPartner.avatar_url ? escapeStyleUrl(walletDmPartner.avatar_url) : '';
-        const av = safeAvatar ? 'background-image:url(\'' + safeAvatar + '\');color:transparent;' : '';
-        const ring = walletDmPartner.is_premium ? ' premium-avatar' : '';
-        partnerBanner.innerHTML =
-          '<div class="wpb-avatar' + ring + '" style="' + av + '">' + escapeHtml(initial) + '</div>' +
-          '<div class="wpb-info">' +
-            '<strong>' + escapeHtml(walletDmPartner.display_name || walletDmPartner.username) +
-              (walletDmPartner.is_premium ? ' 👑' : '') +
-            '</strong>' +
-            '<span>Transactions with this person only</span>' +
-          '</div>';
-      }
-    }
-    if (historyTitle) historyTitle.textContent = 'History with ' +
-      (walletDmPartner ? (walletDmPartner.display_name || walletDmPartner.username) : '');
-  } else {
-    tabs.forEach(t => { t.style.display = ''; });
-    if (partnerBanner) partnerBanner.classList.add('hidden');
-    if (historyTitle) historyTitle.textContent = 'All history';
-    _partnerBannerLastKey = "";
-  }
+  })(r);
+  r.querySelectorAll('table').forEach(function (t) { if (!t.parentElement.closest('table')) { var w = document.createElement('div'); w.className = 'tw'; t.replaceWith(w); w.append(t); } });
+  return r;
+}
+function snip(s) {
+  var t = new DOMParser().parseFromString(String(s || '').replace(/<span class="searchmatch">/g, '\u0001').replace(/<\/span>/g, '\u0002'), 'text/html').body.textContent;
+  return h(t).replace(/\u0001/g, '<mark>').replace(/\u0002/g, '</mark>');
 }
 
-function switchWalletTab(name) {
-  if (!elements.walletTabs) return;
-  elements.walletTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.wtab === name));
-  if (elements.walletModal) elements.walletModal.querySelectorAll('.wallet-panel').forEach(p => p.classList.toggle('active', p.dataset.wpanel === name));
-  if (name === 'history') renderWalletHistory();
-}
-
-/* =========================================================
-   WALLET SEND
-   ========================================================= */
-function resetWalletSendPanel() {
-  if (walletMode !== 'dm') {
-    walletSendTarget = null;
-    if (elements.walletSendSearch) elements.walletSendSearch.value = '';
-    if (elements.walletSendResults) elements.walletSendResults.innerHTML = '';
-    if (elements.walletSendSelected) { elements.walletSendSelected.classList.add('hidden'); elements.walletSendSelected.innerHTML = ''; }
-    const searchField = elements.walletSendSearch && elements.walletSendSearch.closest('.field');
-    if (searchField) searchField.style.display = '';
-  } else if (walletDmPartner) {
-    walletSendTarget = walletDmPartner;
-    renderWalletSelected('send', walletDmPartner);
-    const searchField = elements.walletSendSearch && elements.walletSendSearch.closest('.field');
-    if (searchField) searchField.style.display = 'none';
-    if (elements.walletSendResults) elements.walletSendResults.innerHTML = '';
-  }
-  if (elements.walletSendAmount) elements.walletSendAmount.value = '';
-  if (elements.walletSendNote) elements.walletSendNote.value = '';
-  if (elements.walletSendMsg) { elements.walletSendMsg.textContent = ''; elements.walletSendMsg.classList.add('hidden'); }
-  updateWalletSendButton();
-  updateSendFeePreview();
-}
-
-function prefillWalletSend(user) {
-  walletSendTarget = user;
-  renderWalletSelected('send', user);
-  const searchField = elements.walletSendSearch && elements.walletSendSearch.closest('.field');
-  if (searchField) searchField.style.display = 'none';
-  updateWalletSendButton();
-  updateSendFeePreview();
-}
-
-function renderWalletSelected(kind, user) {
-  const box = kind === 'send' ? elements.walletSendSelected : elements.walletRequestSelected;
-  if (!box) return;
-  box.classList.remove('hidden');
-  const initial = (user.display_name || user.username || 'U').charAt(0).toUpperCase();
-  const ring = user.is_premium ? ' premium-avatar' : '';
-  const safeAvatar = user.avatar_url ? escapeStyleUrl(user.avatar_url) : "";
-  box.innerHTML =
-    '<div class="wallet-selected-chip">' +
-      '<div class="avatar-small' + ring + '"' +
-        (safeAvatar ? ' style="background-image:url(\'' + safeAvatar + '\');color:transparent;"' : '') +
-        '>' + escapeHtml(initial) + '</div>' +
-      '<div class="wallet-selected-info"><strong>' +
-        escapeHtml(user.display_name || user.username) +
-        (user.is_premium ? ' 👑' : '') +
-      '</strong><span>@' + escapeHtml(user.username) + '</span></div>' +
-      (walletMode === 'dm' ? '' : '<button type="button" class="wallet-selected-clear">×</button>') +
-    '</div>';
-  const clearBtn = box.querySelector('.wallet-selected-clear');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
-      if (kind === 'send') walletSendTarget = null;
-      else walletRequestTarget = null;
-      box.classList.add('hidden'); box.innerHTML = '';
-      const searchField = kind === 'send'
-        ? (elements.walletSendSearch && elements.walletSendSearch.closest('.field'))
-        : (elements.walletRequestSearch && elements.walletRequestSearch.closest('.field'));
-      if (searchField) searchField.style.display = '';
-      updateWalletSendButton(); updateWalletRequestButton();
-      updateSendFeePreview(); updateRequestFeePreview();
-    });
-  }
-}
-
-function updateWalletSendButton() {
-  const amt = parseFloat(elements.walletSendAmount.value || 0);
-  elements.walletSendBtn.disabled = !walletSendTarget || !(amt >= WALLET_MIN_AMOUNT);
-  updateSendFeePreview();
-}
-
-function updateSendFeePreview() {
-  const amt = parseFloat(elements.walletSendAmount.value || 0);
-  const fee = calculateFeePreview(amt);
-  const total = amt + fee;
-  const preview = document.getElementById('walletSendFeePreview');
-  if (!preview) return;
-  if (!amt || amt < WALLET_MIN_AMOUNT) { preview.classList.add('hidden'); return; }
-  preview.classList.remove('hidden');
-  preview.innerHTML =
-    '<div class="wfp-row"><span>Amount</span><strong>₹' + formatMoney(amt) + '</strong></div>' +
-    '<div class="wfp-row"><span>Fee (' + currentFeePct() + '%)</span><strong>+₹' + formatMoney(fee) + '</strong></div>' +
-    '<div class="wfp-row wfp-total"><span>You pay</span><strong>₹' + formatMoney(total) + '</strong></div>' +
-    '<div class="wfp-note">They receive ₹' + formatMoney(amt) + '</div>';
-}
-
-let _walletSearchTimer = null;
-let _walletSearchReqId = 0;
-
-function walletSearchUsers(query, resultsBox, onPick) {
-  clearTimeout(_walletSearchTimer);
-  const reqId = ++_walletSearchReqId;
-  if (!query || query.length < 1) {
-    resultsBox.innerHTML = '';
-    return;
-  }
-  _walletSearchTimer = setTimeout(async () => {
-    try {
-            const { data, error } = await db.from('profiles')
-        .select('id, username, display_name, avatar_url, is_premium')
-        .neq('id', currentUser.id)
-        .or('username.ilike.%' + query + '%,display_name.ilike.%' + query + '%')
-        .limit(8);
-      if (error) throw error;
-      if (reqId !== _walletSearchReqId) return;
-      resultsBox.innerHTML = '';
-      (data || []).forEach(u => {
-        const initial = (u.display_name || u.username).charAt(0).toUpperCase();
-        const row = document.createElement('div');
-        row.className = 'wallet-user-row';
-        const ring = u.is_premium ? ' premium-avatar' : '';
-        const safeAvatar = u.avatar_url ? escapeStyleUrl(u.avatar_url) : '';
-                row.innerHTML =
-          '<div class="avatar-small' + ring + '"' +
-            (safeAvatar ? ' style="background-image:url(\'' + safeAvatar + '\');color:transparent;"' : '') +
-            '>' + escapeHtml(initial) + '</div>' +
-          '<div class="wallet-user-row-info"><strong>' +
-            escapeHtml(u.display_name || u.username) +
-            (u.is_premium ? ' 👑' : '') + '</strong>' +
-          '<span>@' + escapeHtml(u.username) + '</span></div>';
-        row.addEventListener('click', () => onPick(u));
-        resultsBox.appendChild(row);
+/* ---------- UI helpers ---------- */
+function card(t, sn, meta) { return '<a class="card" href="#" data-title="' + h(t) + '" data-r="' + rj({ t: 'article', a: t, st: [] }) + '"><div class="th">' + ic('doc', 30) + '</div><div class="cb"><b>' + h(t) + '</b><p>' + (sn || '') + '</p><small>' + (meta || '') + '</small></div></a>'; }
+function enrich(ts) {
+  ts = ts.slice(0, 20); if (!ts.length) return;
+  api({ action: 'query', prop: 'pageimages|extracts', piprop: 'thumbnail', pithumbsize: 160, pilimit: 20, exintro: 1, explaintext: 1, exsentences: 2, exlimit: 20, titles: ts.join('|') }).then(function (d) {
+    var cs = Array.prototype.slice.call(R.querySelectorAll('.card'));
+    ((d.query || {}).pages || []).forEach(function (p) {
+      cs.filter(function (c) { return c.dataset.title === p.title; }).forEach(function (c) {
+        if (p.thumbnail) { var u = new URL(p.thumbnail.source, C.origin); if (okHost(u)) c.querySelector('.th').innerHTML = '<img loading="lazy" referrerpolicy="no-referrer" alt="" src="' + h(u.href) + '">'; }
+        var pp = c.querySelector('p'); if (pp && !pp.textContent && p.extract) pp.textContent = p.extract;
       });
-    } catch (e) {
-      if (reqId === _walletSearchReqId) resultsBox.innerHTML = '<div class="search-empty">Search failed</div>';
-    }
-  }, 220);
-}
-
-/* =========================================================
-   WALLET REQUEST
-   ========================================================= */
-function resetWalletRequestPanel() {
-  if (walletMode !== 'dm') {
-    walletRequestTarget = null;
-    if (elements.walletRequestSearch) elements.walletRequestSearch.value = '';
-    if (elements.walletRequestResults) elements.walletRequestResults.innerHTML = '';
-    if (elements.walletRequestSelected) { elements.walletRequestSelected.classList.add('hidden'); elements.walletRequestSelected.innerHTML = ''; }
-    const searchField = elements.walletRequestSearch && elements.walletRequestSearch.closest('.field');
-    if (searchField) searchField.style.display = '';
-  } else if (walletDmPartner) {
-    walletRequestTarget = walletDmPartner;
-    renderWalletSelected('request', walletDmPartner);
-    const searchField = elements.walletRequestSearch && elements.walletRequestSearch.closest('.field');
-    if (searchField) searchField.style.display = 'none';
-    if (elements.walletRequestResults) elements.walletRequestResults.innerHTML = '';
-  }
-  if (elements.walletRequestAmount) elements.walletRequestAmount.value = '';
-  if (elements.walletRequestNote) elements.walletRequestNote.value = '';
-  if (elements.walletRequestMsg) { elements.walletRequestMsg.textContent = ''; elements.walletRequestMsg.classList.add('hidden'); }
-  updateWalletRequestButton();
-  updateRequestFeePreview();
-}
-
-function prefillWalletRequest(user) {
-  walletRequestTarget = user;
-  renderWalletSelected('request', user);
-  const searchField = elements.walletRequestSearch && elements.walletRequestSearch.closest('.field');
-  if (searchField) searchField.style.display = 'none';
-  updateWalletRequestButton();
-  updateRequestFeePreview();
-}
-
-function updateWalletRequestButton() {
-  const amt = parseFloat(elements.walletRequestAmount.value || 0);
-  elements.walletRequestBtn.disabled = !walletRequestTarget || !(amt >= WALLET_MIN_AMOUNT);
-  updateRequestFeePreview();
-}
-
-function updateRequestFeePreview() {
-  const amt = parseFloat(elements.walletRequestAmount.value || 0);
-  const fee = calculateFeePreview(amt);
-  const total = amt + fee;
-  const preview = document.getElementById('walletRequestFeePreview');
-  if (!preview) return;
-  if (!amt || amt < WALLET_MIN_AMOUNT) { preview.classList.add('hidden'); return; }
-  preview.classList.remove('hidden');
-  preview.innerHTML =
-    '<div class="wfp-row"><span>You request</span><strong>₹' + formatMoney(amt) + '</strong></div>' +
-    '<div class="wfp-row"><span>They pay (incl. ' + currentFeePct() + '% fee)</span><strong>₹' + formatMoney(total) + '</strong></div>';
-}
-
-/* =========================================================
-   WALLET HISTORY
-   ========================================================= */
-function renderWalletHistory() {
-  const list = elements.walletHistoryList;
-  if (!list) return;
-
-  const dmUid = (walletMode === 'dm' && walletDmPartner) ? walletDmPartner.id : null;
-  const filter = walletHistoryFilter;
-
-  const items = [];
-
-  for (const t of walletTransactions) {
-if (t.kind === 'platform_fee' || t.kind === 'fee') continue;
-    if (dmUid && t.from_user !== dmUid && t.to_user !== dmUid) continue;
-    if (filter === 'sent' && t.from_user !== currentUser.id) continue;
-    if (filter === 'received' && t.to_user !== currentUser.id) continue;
-    if (filter === 'requests') continue;
-    items.push({ kind: 'txn', at: t.created_at, txn: t });
-  }
-
-  if (filter === 'all' || filter === 'requests') {
-    for (const r of walletRequestsIncoming) {
-      if (dmUid && r.from_user !== dmUid) continue;
-      items.push({ kind: 'req_in', at: r.created_at, req: r });
-    }
-    for (const r of walletRequestsOutgoing) {
-      if (dmUid && r.to_user !== dmUid) continue;
-      items.push({ kind: 'req_out', at: r.created_at, req: r });
-    }
-  }
-
-  items.sort((a, b) => new Date(b.at) - new Date(a.at));
-
-  if (!items.length) {
-    list.innerHTML = '<div class="search-empty">' +
-      (dmUid ? 'No transactions with this person yet.' : 'Nothing here yet. Send or receive money to see it here.') +
-      '</div>';
-    return;
-  }
-
-  list.innerHTML = '';
-  const frag = document.createDocumentFragment();
-  for (const item of items) {
-    const el = item.kind === 'txn' ? buildHistoryTxnRow(item.txn) : buildHistoryRequestRow(item.req, item.kind);
-    if (el) frag.appendChild(el);
-  }
-  list.appendChild(frag);
-}
-
-function buildHistoryTxnRow(t) {
-  const isSent = t.from_user === currentUser.id;
-  const otherId = isSent ? t.to_user : t.from_user;
-  const p = profileCache[otherId];
-  const name = p ? (p.display_name || p.username) : 'User';
-  const fee = Number(t.fee || 0);
-  const amount = Number(t.amount || 0);
-  const total = isSent ? amount + fee : amount;
-
-  /* Event ticket + refund special rows */
-  if (t.kind === 'event_ticket' || t.kind === 'event_refund') {
-    const isRefund = t.kind === 'event_refund';
-    const row = document.createElement('div');
-    row.className = 'wallet-history-item ' + (isRefund ? 'received' : 'sent') + ' event-txn-row';
-    row.innerHTML =
-      '<div class="whi-icon event-txn-icon">' +
-        (isRefund
-          ? '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>'
-          : '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a3 3 0 0 0 0 6v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3a3 3 0 0 1 0-6V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><line x1="9" y1="4" x2="9" y2="20" stroke-dasharray="2 3"/></svg>') +
-      '</div>' +
-      '<div class="whi-body">' +
-        '<div class="whi-title">' + (isRefund ? 'Refund · ' : 'Ticket · ') +
-          escapeHtml((t.note || 'Event').replace(/^Fundraiser: /, '').replace(/^Refund for event: /, '').replace(/^Event ticket: /, '')) +
-        '</div>' +
-        '<div class="whi-time">' + formatListTime(t.created_at) + ' • ' + escapeHtml(moneyStatusLabel(t.status)) + '</div>' +
-      '</div>' +
-      '<div class="whi-amount ' + (isRefund ? 'pos' : 'neg') + '">' +
-        (isRefund ? '+' : '−') + '₹' + formatMoney(amount) +
-      '</div>';
-    row.addEventListener('click', () => openMoneyReceipt(t.id));
-    return row;
-  }
-
-  /* Default transfer row */
-  const row = document.createElement('div');
-  row.className = 'wallet-history-item ' + (isSent ? 'sent' : 'received');
-  row.innerHTML =
-    '<div class="whi-icon">' + (isSent ? '↑' : '↓') + '</div>' +
-    '<div class="whi-body">' +
-      '<div class="whi-title">' + (isSent ? 'To ' : 'From ') + escapeHtml(name) + '</div>' +
-      (t.note ? '<div class="whi-note">' + escapeHtml(t.note) + '</div>' : '') +
-      '<div class="whi-time">' + formatListTime(t.created_at) + ' · ' + escapeHtml(moneyStatusLabel(t.status)) +
-        (isSent && fee > 0 ? ' · fee ₹' + formatMoney(fee) : '') +
-      '</div>' +
-    '</div>' +
-    '<div class="whi-amount ' + (isSent ? 'neg' : 'pos') + '">' +
-      (isSent ? '−' : '+') + '₹' + formatMoney(isSent ? total : amount) +
-    '</div>';
-  row.addEventListener('click', () => openMoneyReceipt(t.id));
-  return row;
-}
-
-function buildHistoryRequestRow(r, kind) {
-  const isIncoming = kind === 'req_in';
-  const otherId = isIncoming ? r.from_user : r.to_user;
-  const p = profileCache[otherId];
-  const name = p ? (p.display_name || p.username) : 'User';
-  const row = document.createElement('div');
-  row.className = 'wallet-history-item request ' + (isIncoming ? 'request-in' : 'request-out');
-  row.innerHTML =
-    '<div class="whi-icon">' + (isIncoming ? '←' : '→') + '</div>' +
-    '<div class="whi-body">' +
-      '<div class="whi-title">' + (isIncoming ? 'Request from ' : 'Requested from ') + escapeHtml(name) + '</div>' +
-      (r.note ? '<div class="whi-note">' + escapeHtml(r.note) + '</div>' : '') +
-      '<div class="whi-time">' + formatListTime(r.created_at) + ' • ' + escapeHtml(moneyStatusLabel(r.status)) + '</div>' +
-    '</div>' +
-    '<div class="whi-amount">₹' + formatMoney(r.amount) + '</div>';
-  return row;
-}
-
-/* =========================================================
-   WALLET DEPOSIT
-   ========================================================= */
-function resetWalletDepositPanel() {
-  walletDepositFile = null;
-  if (elements.walletDepositAmount) elements.walletDepositAmount.value = '';
-  if (elements.walletDepositNote) elements.walletDepositNote.value = '';
-  if (elements.walletDepositFile) elements.walletDepositFile.value = '';
-  if (elements.walletDepositFileName) elements.walletDepositFileName.textContent = '';
-  if (elements.walletDepositPreview) { elements.walletDepositPreview.innerHTML = ''; elements.walletDepositPreview.classList.add('hidden'); }
-  if (elements.walletDepositMsg) { elements.walletDepositMsg.textContent = ''; elements.walletDepositMsg.classList.add('hidden'); }
-  const minNote = document.getElementById('walletDepositMinNote');
-  if (minNote) minNote.textContent = '₹' + platformSettings.deposit_min_amount;
-}
-
-async function walletMessageAdminForDeposit() {
-  try {
-    let adminProfile = null;
-    if (adminUserId) adminProfile = await getProfileCached(adminUserId);
-    if (!adminProfile) {
-      const { data } = await db.from('profiles').select('*').eq('username', ADMIN_USERNAME).maybeSingle();
-      if (data) adminProfile = data;
-    }
-    if (!adminProfile) return showToast('Admin not available right now.', 'error');
-    const user = { id: adminProfile.id, username: adminProfile.username, display_name: adminProfile.display_name, avatar_url: adminProfile.avatar_url, is_premium: adminProfile.is_premium };
-    closeWalletModal();
-    await startConversation(user);
-    elements.messageInput.value = "Hi admin 👋 — I'd like to add money to my JustGo wallet.\nAmount: ₹";
-    autoResizeTextarea();
-    elements.messageInput.focus();
-  } catch (e) { showToast(friendlyError(e), 'error'); }
-}
-
-async function walletMessagePeerForDeposit() {
-  closeWalletModal();
-  if (elements.userSearch) {
-    elements.userSearch.value = '';
-    elements.userSearch.focus();
-    showToast('Search a classmate to ask them to transfer you money.', 'success');
-  }
-}
-
-async function submitWalletDeposit() {
-  const amount = parseFloat(elements.walletDepositAmount.value || 0);
-  const note = elements.walletDepositNote.value.trim();
-  if (!(amount >= platformSettings.deposit_min_amount)) {
-    return walletShowMsg(elements.walletDepositMsg,
-      'Minimum deposit is ₹' + platformSettings.deposit_min_amount + '.', 'error');
-  }
-  if (!walletDepositFile) return walletShowMsg(elements.walletDepositMsg, 'Attach a payment screenshot.', 'error');
-  elements.walletDepositBtn.disabled = true;
-  elements.walletDepositBtn.textContent = 'Submitting…';
-  try {
-    const ext = (walletDepositFile.name.split('.').pop() || 'jpg').toLowerCase();
-    const path = currentUser.id + '/deposits/' + Date.now() + '.' + ext;
-    const { error: upErr } = await db.storage.from(STORAGE_BUCKET).upload(path, walletDepositFile, { upsert: false });
-    if (upErr) throw upErr;
-    const { error } = await db.from('justgo_deposit_requests').insert({
-      user_id: currentUser.id, amount, screenshot_path: path, note: note || null, status: 'pending'
     });
-    if (error) {
-      try { await db.storage.from(STORAGE_BUCKET).remove([path]); } catch (e) {}
-      throw error;
-    }
-    walletShowMsg(elements.walletDepositMsg, 'Deposit request submitted. Admin will review soon.', 'success');
-    showToast('Deposit request submitted.', 'success');
-    resetWalletDepositPanel();
-  } catch (e) { walletShowMsg(elements.walletDepositMsg, friendlyError(e), 'error'); }
-  finally { elements.walletDepositBtn.disabled = false; elements.walletDepositBtn.textContent = 'Submit deposit request'; }
+  }).catch(function () {});
+}
+function bc(a) { return '<nav class="bc">' + a.map(function (x, i) { return (i ? '<span>›</span>' : '') + (x[1] ? '<a href="#" data-r="' + rj(x[1]) + '">' + h(x[0]) + '</a>' : '<em>' + h(x[0]) + '</em>'); }).join('') + '</nav>'; }
+function cards(s) { return s.length ? '<div class="grid1">' + s.map(function (x) { return card(x.title, x.snippet ? snip(x.snippet) : '', x.wordcount ? x.wordcount + ' words · ' + fd(x.timestamp) : ''); }).join('') + '</div>' : '<p class="mu">Nothing found.</p>'; }
+function pager(r, cont) {
+  var o = '';
+  if (r.st && r.st.length) o += '<button class="bt" data-r="' + rj(Object.assign({}, r, { tok: r.st[r.st.length - 1], st: r.st.slice(0, -1) })) + '">← Previous</button>';
+  if (cont) o += '<button class="bt" data-r="' + rj(Object.assign({}, r, { tok: cont, st: (r.st || []).concat([r.tok || '']) })) + '">Next →</button>';
+  return o ? '<div class="pg">' + o + '</div>' : '';
+}
+function addRecent(t) { var l = (ls('bds_recent') || []).filter(function (x) { return x.t !== t; }); l.unshift({ t: t, d: Date.now() }); ls('bds_recent', l.slice(0, 12)); }
+function recentHtml(n) { var l = (ls('bds_recent') || []).slice(0, n); return l.length ? '<div class="chips">' + l.map(function (x) { return '<a class="chip" href="#" data-r="' + rj({ t: 'article', a: x.t, st: [] }) + '">' + h(x.t) + '</a>'; }).join('') + '</div>' : '<p class="mu">Articles you open will appear here.</p>'; }
+
+/* ---------- Routing ---------- */
+function nav(r, np) { if (!r.st) r.st = []; if (!np && cur) stack.push(cur); cur = r; render(); }
+function back() { if (stack.length) { cur = stack.pop(); render(); } }
+function render() {
+  var tk = ++tok; $('.app').classList.remove('open'); $('#toc').innerHTML = ''; $('.wrap').classList.remove('ht');
+  $('.pb').classList.add('on'); $('#main').innerHTML = '<div class="ld"><i></i><span>Loading from TheoGo…</span></div>';
+  Array.prototype.forEach.call(R.querySelectorAll('.ni'), function (e) { var r = JSON.parse(e.dataset.r || '{}'); e.classList.toggle('on', r.t === cur.t && (r.a || '') === (cur.t === 'article' ? '' : cur.a || '')); });
+  try { V[cur.t](cur, tk); } catch (e) { fail(e, tk); }
+}
+function put(tk, html, post) { if (tk !== tok) return; var m = $('#main'); m.innerHTML = html + foot(); m.scrollTop = 0; $('.pb').classList.remove('on'); if (post) post(); }
+function foot() { return '<footer>BDStudyMaterial · Study content from <a target="_blank" rel="noopener" href="' + C.origin + '">TheoGo</a> under its own licence · <a href="#" data-act="diag">API status</a></footer>'; }
+function fail(e, tk) {
+  var c = (e && e.code) || '', m = /missingtitle|invalidtitle|nosuchpage/.test(c) ? ['Article not found', 'This page does not exist on TheoGo (it may have been renamed or deleted).'] : /denied|permission|private/.test(c) ? ['Not publicly accessible', 'TheoGo does not allow public reading of this page, so it cannot be shown here.'] : ['Couldn’t reach TheoGo', 'The request failed (' + h((e && e.message) || 'network error') + '). This can be a network problem or a CORS block.'];
+  put(tk, '<div class="err"><h2>' + m[0] + '</h2><p>' + m[1] + '</p><p><button class="bt" data-act="retry">Retry</button> <a class="bt" target="_blank" rel="noopener" href="' + C.origin + '">Open TheoGo ↗</a> <button class="bt" data-act="diag">Run API test</button></p></div>');
 }
 
-/* =========================================================
-   WALLET WITHDRAW — new panel with choices
-   ========================================================= */
-function resetWalletWithdrawPanel() {
-  if (elements.walletWithdrawMsg) { elements.walletWithdrawMsg.textContent = ''; elements.walletWithdrawMsg.classList.add('hidden'); }
-}
-
-async function walletMessageAdminForWithdraw(method) {
-  try {
-    let adminProfile = null;
-    if (adminUserId) adminProfile = await getProfileCached(adminUserId);
-    if (!adminProfile) {
-      const { data } = await db.from('profiles').select('*').eq('username', ADMIN_USERNAME).maybeSingle();
-      if (data) adminProfile = data;
-    }
-    if (!adminProfile) return showToast('Admin not available right now.', 'error');
-    const user = { id: adminProfile.id, username: adminProfile.username, display_name: adminProfile.display_name, avatar_url: adminProfile.avatar_url, is_premium: adminProfile.is_premium };
-
-    let template = "Hi admin 👋 — I'd like to withdraw money from my JustGo wallet.\n" +
-      "Amount: ₹\n";
-
-    if (method === 'upi') {
-      template += "Method: UPI\nUPI ID: \nName on UPI: ";
-    } else if (method === 'bank') {
-      template += "Method: Bank transfer\nAccount holder: \nAccount number: \nIFSC: \nBank name: ";
-    } else {
-      template += "Method: (please specify)\nDetails: ";
-    }
-
-    closeWalletModal();
-    await startConversation(user);
-    elements.messageInput.value = template;
-    autoResizeTextarea();
-    elements.messageInput.focus();
-  } catch (e) { showToast(friendlyError(e), 'error'); }
-}
-
-/* =========================================================
-   SHARED SEND MONEY HELPER
-   ========================================================= */
-async function sendMoneyRpc({ toUserId, amount, note, conversationId, notePrefix, messageId }) {
-  const idem = 'txn_' + currentUser.id + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-  const { data, error } = await db.rpc('send_money', {
-    p_to_user: toUserId,
-    p_amount: amount,
-    p_note: (notePrefix ? notePrefix + ' ' : '') + (note || ''),
-    p_idempotency_key: idem,
-    p_conversation_id: conversationId || null
-  });
-  if (error) throw error;
-
-  // Attach tip metadata if this is a tip
-  if (messageId && data && data.transaction_id) {
-    try {
-      await db.from('justgo_transactions').update({
-        note: (note || '') + ' [tip:' + messageId + ']'
-      }).eq('id', data.transaction_id);
-    } catch (e) {}
-  }
-  return data;
-}
-
-/* =========================================================
-   CONFIRM SEND
-   ========================================================= */
-function requestConfirmSend(target, amount, note) {
-  walletPendingConfirm = { to_user: target, amount, note };
-  const name = target.display_name || target.username;
-  const initial = name.charAt(0).toUpperCase();
-  const fee = calculateFeePreview(amount);
-  const total = Number(amount) + fee;
-
-  if (elements.moneyConfirmAvatar) {
-    if (target.avatar_url) {
-      const safe = escapeStyleUrl(target.avatar_url);
-      elements.moneyConfirmAvatar.style.backgroundImage = "url('" + safe + "')";
-      elements.moneyConfirmAvatar.textContent = '';
-    } else {
-      elements.moneyConfirmAvatar.style.backgroundImage = '';
-      elements.moneyConfirmAvatar.textContent = initial;
-    }
-    elements.moneyConfirmAvatar.classList.toggle('premium-avatar-big', !!target.is_premium);
-  }
-  elements.moneyConfirmName.textContent = name;
-  elements.moneyConfirmUsername.textContent = '@' + target.username;
-  elements.moneyConfirmAmount.textContent = '₹' + formatMoney(amount);
-  elements.moneyConfirmNote.textContent = note || '—';
-
-  if (elements.moneyConfirmFeeValue) elements.moneyConfirmFeeValue.textContent = '+₹' + formatMoney(fee);
-  if (elements.moneyConfirmFeeRow) elements.moneyConfirmFeeRow.style.display = '';
-  if (elements.moneyConfirmTotalValue) elements.moneyConfirmTotalValue.textContent = '₹' + formatMoney(total);
-  if (elements.moneyConfirmTotalRow) elements.moneyConfirmTotalRow.style.display = '';
-  if (elements.moneyConfirmNet) elements.moneyConfirmNet.textContent = '₹' + formatMoney(amount);
-
-  elements.moneyConfirmGo.textContent = 'Pay ₹' + formatMoney(total);
-  elements.moneyConfirmMsg.classList.add("hidden");
-  openModal(elements.moneyConfirmModal);
-}
-
-async function doConfirmSend() {
-  if (!walletPendingConfirm) return;
-  const { to_user, amount, note } = walletPendingConfirm;
-  const fee = calculateFeePreview(amount);
-  const total = Number(amount) + fee;
-
-  elements.moneyConfirmGo.disabled = true;
-  elements.moneyConfirmGo.textContent = 'Sending…';
-
-  if (total > myWallet.balance) {
-    walletShowMsg(elements.moneyConfirmMsg, 'Not enough balance. You need ₹' + formatMoney(total) + '.', 'error');
-    elements.moneyConfirmGo.disabled = false;
-    elements.moneyConfirmGo.textContent = 'Pay ₹' + formatMoney(total);
-    return;
-  }
-
-  try {
-    await sendMoneyRpc({
-      toUserId: to_user.id,
-      amount: amount,
-      note: note || null,
-      conversationId: currentConversation && !currentConversation.is_group ? currentConversation.id : null
-    });
-    closeModal(elements.moneyConfirmModal);
-    walletPendingConfirm = null;
-    await refreshWalletData();
-    await loadConversations();
-    showToast('Sent ₹' + formatMoney(amount) + '. Total paid ₹' + formatMoney(total) + '.', 'success');
-  } catch (e) { walletShowMsg(elements.moneyConfirmMsg, friendlyError(e), 'error'); }
-  finally {
-    elements.moneyConfirmGo.disabled = false;
-    const f = calculateFeePreview(amount);
-    elements.moneyConfirmGo.textContent = 'Pay ₹' + formatMoney(Number(amount) + f);
-  }
-}
-
-/* =========================================================
-   REQUEST MONEY
-   ========================================================= */
-async function doRequestMoney() {
-  if (!walletRequestTarget) return;
-  const amount = parseFloat(elements.walletRequestAmount.value || 0);
-  const note = elements.walletRequestNote.value.trim();
-  if (!(amount >= WALLET_MIN_AMOUNT)) return walletShowMsg(elements.walletRequestMsg, 'Enter a valid amount.', 'error');
-  elements.walletRequestBtn.disabled = true;
-  elements.walletRequestBtn.textContent = 'Requesting…';
-  try {
-    const { error } = await db.rpc('request_money', {
-      p_to_user: walletRequestTarget.id, p_amount: amount, p_note: note || null,
-      p_conversation_id: currentConversation && !currentConversation.is_group ? currentConversation.id : null
-    });
-    if (error) throw error;
-    walletShowMsg(elements.walletRequestMsg, 'Request sent.', 'success');
-    showToast('Request sent.', 'success');
-    await refreshWalletData();
-    await loadConversations();
-    resetWalletRequestPanel();
-  } catch (e) { walletShowMsg(elements.walletRequestMsg, friendlyError(e), 'error'); }
-  finally { elements.walletRequestBtn.disabled = false; elements.walletRequestBtn.textContent = 'Request money'; }
-}
-
-/* =========================================================
-   PAY / DECLINE / CANCEL REQUEST
-   ========================================================= */
-async function walletPayRequest(requestId) {
-  if (!requestId) return;
-  if (!confirm('Pay this request now?')) return;
-  try {
-    const idem = 'pay_' + currentUser.id + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-    const { error } = await db.rpc('pay_money_request', { p_request_id: requestId, p_idempotency_key: idem });
-    if (error) throw error;
-    await refreshWalletData();
-    showToast('Paid.', 'success');
-  } catch (e) { showToast(friendlyError(e), 'error'); }
-}
-async function walletDeclineRequest(requestId) {
-  if (!requestId) return;
-  try { await db.rpc('decline_money_request', { p_request_id: requestId }); await refreshWalletData(); showToast('Declined.', 'success'); }
-  catch (e) { showToast(friendlyError(e), 'error'); }
-}
-async function walletCancelRequest(requestId) {
-  if (!requestId) return;
-  try { await db.rpc('cancel_money_request', { p_request_id: requestId }); await refreshWalletData(); showToast('Cancelled.', 'success'); }
-  catch (e) { showToast(friendlyError(e), 'error'); }
-}
-
-/* =========================================================
-   RECEIPT
-   ========================================================= */
-async function openMoneyReceipt(txnId) {
-  if (!txnId) return;
-  elements.moneyReceiptBody.innerHTML = '<div class="search-empty">Loading…</div>';
-  openModal(elements.moneyReceiptModal);
-  try {
-    let txn = walletTransactions.find(t => t.id === txnId);
-    if (!txn) {
-      const { data } = await db.from('justgo_transactions').select('*').eq('id', txnId).maybeSingle();
-      txn = data;
-    }
-    if (!txn) { elements.moneyReceiptBody.innerHTML = '<div class="search-empty">Receipt not found.</div>'; return; }
-    const fromP = await getProfileCached(txn.from_user);
-    const toP = await getProfileCached(txn.to_user);
-    const fromName = fromP ? (fromP.display_name || fromP.username) : 'User';
-    const toName = toP ? (toP.display_name || toP.username) : 'User';
-    const isSent = txn.from_user === currentUser.id;
-    const fee = Number(txn.fee || 0);
-    const amount = Number(txn.amount || 0);
-    const total = isSent ? amount + fee : amount;
-
-    elements.moneyReceiptBody.innerHTML =
-      '<div class="receipt-hero">' +
-        '<div class="receipt-amount">₹' + formatMoney(amount) + '</div>' +
-        '<div class="receipt-direction ' + (isSent ? 'neg' : 'pos') + '">' + (isSent ? 'Sent' : 'Received') + '</div>' +
-      '</div>' +
-      '<div class="receipt-row"><span>From</span><strong>' + escapeHtml(fromName) + '</strong></div>' +
-      '<div class="receipt-row"><span>To</span><strong>' + escapeHtml(toName) + '</strong></div>' +
-      (isSent && fee > 0 ? '<div class="receipt-row"><span>Fee (' + currentFeePct() + '%)</span><strong>+₹' + formatMoney(fee) + '</strong></div>' : '') +
-      (isSent && fee > 0 ? '<div class="receipt-row"><span>You paid</span><strong>₹' + formatMoney(total) + '</strong></div>' : '') +
-      (!isSent ? '<div class="receipt-row"><span>You received</span><strong>₹' + formatMoney(amount) + '</strong></div>' : '') +
-      '<div class="receipt-row"><span>Status</span><strong>' + escapeHtml(moneyStatusLabel(txn.status)) + '</strong></div>' +
-      (txn.note ? '<div class="receipt-row"><span>Note</span><strong>' + escapeHtml(txn.note) + '</strong></div>' : '') +
-      '<div class="receipt-row"><span>Time</span><strong>' + new Date(txn.created_at).toLocaleString() + '</strong></div>' +
-      '<div class="receipt-zero">Transaction fee: ' + currentFeePct() + '% (added on top). ' +
-        (isPremium() ? 'You get premium rate 👑' : 'Get premium to pay only ' + platformSettings.premium_discount_fee_pct + '%') +
-      '</div>';
-  } catch (e) { elements.moneyReceiptBody.innerHTML = '<div class="search-empty">Could not load receipt.</div>'; }
-}
-
-/* =========================================================
-   TIP
-   ========================================================= */
-function openTipModal(message) {
-  if (!message || !message.sender_id) return;
-  if (message.sender_id === currentUser.id) return showToast("You can't tip your own message.", 'error');
-  tipMessageTarget = message;
-  elements.tipPreview.textContent = (message.content || '(file)').slice(0, 120);
-  elements.tipAmount.value = '';
-  elements.tipMsg.classList.add('hidden');
-  updateTipFeePreview();
-  openModal(elements.tipModal);
-}
-function updateTipFeePreview() {
-  const amt = parseFloat(elements.tipAmount.value || 0);
-  const preview = document.getElementById('tipFeePreview');
-  if (!preview) return;
-  if (!amt || amt < WALLET_MIN_AMOUNT) { preview.classList.add('hidden'); return; }
-  const fee = calculateFeePreview(amt);
-  const total = amt + fee;
-  preview.classList.remove('hidden');
-  preview.innerHTML =
-    '<div class="wfp-row"><span>Tip</span><strong>₹' + formatMoney(amt) + '</strong></div>' +
-    '<div class="wfp-row"><span>Fee (' + currentFeePct() + '%)</span><strong>+₹' + formatMoney(fee) + '</strong></div>' +
-    '<div class="wfp-row wfp-total"><span>You pay</span><strong>₹' + formatMoney(total) + '</strong></div>';
-}
-async function sendTip() {
-  if (!tipMessageTarget) return;
-  const amount = parseFloat(elements.tipAmount.value || 0);
-  if (!(amount >= WALLET_MIN_AMOUNT)) return walletShowMsg(elements.tipMsg, 'Enter a valid amount.', 'error');
-  const targetProfile = await getProfileCached(tipMessageTarget.sender_id);
-  if (!targetProfile) return walletShowMsg(elements.tipMsg, 'User not found.', 'error');
-  elements.tipGo.disabled = true;
-  elements.tipGo.textContent = 'Sending…';
-  try {
-    await sendMoneyRpc({
-      toUserId: targetProfile.id,
-      amount: amount,
-      note: 'Tip for a message',
-      conversationId: tipMessageTarget.conversation_id || null,
-      messageId: tipMessageTarget.id
-    });
-    closeModal(elements.tipModal);
-    tipMessageTarget = null;
-    await refreshWalletData();
-    // Refresh the message row to show the tip badge
-    if (typeof loadSingleMessage === 'function' && tipMessageTarget && tipMessageTarget.id) {
-      loadSingleMessage(tipMessageTarget.id);
-    }
-    showToast('Tip sent.', 'success');
-  } catch (e) { walletShowMsg(elements.tipMsg, friendlyError(e), 'error'); }
-  finally { elements.tipGo.disabled = false; elements.tipGo.textContent = 'Send tip'; }
-}
-
-/* =========================================================
-   SPLIT BILL — reworked: no default selection, per-person input
-   ========================================================= */
-let _splitBillOpening = false;
-
-async function openSplitBillModal() {
-  if (!currentConversation) return showToast('Open a chat first.', 'error');
-  if (!currentConversation.is_group) {
-    return showToast('Split bill is only for groups.', 'error');
-  }
-  if (_splitBillOpening) return;
-  _splitBillOpening = true;
-
-  try {
-    const { data: parts, error } = await db.from('conversation_participants')
-      .select('user_id, role')
-      .eq('conversation_id', currentConversation.id);
-    if (error) { showToast('Could not load members.', 'error'); return; }
-    currentParticipants = parts || [];
-
-    const seenIds = new Set();
-    const otherMemberIds = [];
-    for (const p of currentParticipants) {
-      if (p.user_id === currentUser.id) continue;
-      if (seenIds.has(p.user_id)) continue;
-      seenIds.add(p.user_id);
-      otherMemberIds.push(p.user_id);
-    }
-
-    if (!otherMemberIds.length) return showToast('No other members in this group.', 'error');
-
-    const { data: profiles } = await db.from('profiles')
-      .select('id, username, display_name, avatar_url, is_premium')
-      .in('id', otherMemberIds);
-
-    const profileMap = {};
-    (profiles || []).forEach(p => { profileMap[p.id] = p; });
-
-    const seenNames = new Set();
-    splitBillState.members = [];
-    for (const uid of otherMemberIds) {
-      const p = profileMap[uid];
-      if (!p) continue;
-      const displayName = p.display_name || p.username || 'User';
-      const key = p.username || uid;
-      if (seenNames.has(key)) continue;
-      seenNames.add(key);
-      splitBillState.members.push({
-        id: uid,
-        username: p.username || 'user',
-        display_name: displayName,
-        avatar_url: p.avatar_url || null,
-        is_premium: !!p.is_premium,
-        customAmount: null // NEW: per-person override
+var V = {};
+V.home = function (r, tk) {
+  Promise.all([info(), api({ action: 'query', list: 'allcategories', acprop: 'size', aclimit: 500 }).catch(function () { return null; }), api({ action: 'query', list: 'recentchanges', rcnamespace: 0, rctype: 'new|edit', rclimit: 40, rcprop: 'title|timestamp', rcshow: '!bot' }, 12e4).catch(function () { return null; })]).then(function (a) {
+    var si = a[0], st = si && si.query.statistics, cats = a[1] && a[1].query.allcategories || [], rc = a[2] && a[2].query.recentchanges || [], seen = {}, lat = [];
+    cats = cats.filter(function (c) { return c.size > 0; }).sort(function (x, y) { return y.size - x.size; }).slice(0, 14);
+    rc.forEach(function (x) { if (!seen[x.title] && lat.length < 8) { seen[x.title] = 1; lat.push(x); } });
+    var o = '<section class="hero"><h1>BDStudyMaterial</h1><p>Study theology, scripture and church history — live from the TheoGo wiki.</p><div class="sb big"><input id="hq" placeholder="Search articles…" autocomplete="off"><div class="sg" id="hsg" hidden></div></div>' +
+      '<div class="chips"><button class="bt w" data-act="random">' + ic('dice', 18) + ' Random article</button><button class="bt w" data-act="pal">' + ic('search', 18) + ' Search · Ctrl+K</button></div>' +
+      (st ? '<div class="stats"><span>' + ic('doc', 18) + ' <b>' + st.articles + '</b> articles</span><span>' + ic('library', 18) + ' <b>' + st.pages + '</b> pages</span><span>' + ic('note', 18) + ' <b>' + st.edits + '</b> edits</span></div>' : '<p class="warn">TheoGo could not be reached right now — subjects below will retry when you open them.</p>') + '</section>' +
+      '<h2>Browse by subject</h2><div class="grid">' + CATS.map(function (c) { return '<a class="cc" href="#" data-r="' + rj({ t: 'cat', a: c.id, k: 0, tok: '', st: [] }) + '"><span>' + ic(c.i, 34) + '</span><b>' + c.n + '</b><p>' + c.d + '</p></a>'; }).join('') + '</div>';
+    if (cats.length) o += '<h2>Popular TheoGo categories</h2><div class="chips">' + cats.map(function (c) { return '<a class="chip" href="#" data-r="' + rj({ t: 'tcat', a: c.category, tok: '', st: [] }) + '">' + h(c.category) + ' <small>' + c.size + '</small></a>'; }).join('') + '</div>';
+    if (lat.length) o += '<h2>Latest on TheoGo</h2><div class="grid1">' + lat.map(function (x) { return card(x.title, '', 'Updated ' + fd(x.timestamp)); }).join('') + '</div>';
+    o += '<h2>Recently viewed</h2>' + recentHtml(8);
+    put(tk, o, function () { sug($('#hq'), $('#hsg')); enrich(lat.map(function (x) { return x.title; })); });
+  }).catch(function (e) { fail(e, tk); });
+};
+V.cat = function (r, tk) {
+  var c = CATS.filter(function (x) { return x.id === r.a; })[0], k = r.k || 0;
+  api({ action: 'query', list: 'search', srsearch: c.q[k], srlimit: C.page, sroffset: r.tok || 0, srprop: 'snippet|wordcount|timestamp', srinfo: 'totalhits' }).then(function (d) {
+    var s = d.query.search || [], x = d.query.searchinfo || {};
+    var extra = c.id === 'res' ? '<div class="chips"><a class="chip" target="_blank" rel="noopener" href="' + C.origin + '/wiki/Main_Page">TheoGo main page ↗</a><a class="chip" href="library/">JustGo Library</a></div>' : '';
+    put(tk, bc([['Home', { t: 'home' }], [c.n]]) + '<h1 class="hi">' + ic(c.i, 32) + ' ' + c.n + '</h1><p class="mu">' + c.d + '</p>' + extra +
+      '<div class="chips">' + c.q.map(function (q, i) { return '<button class="chip ' + (i === k ? 'on' : '') + '" data-r="' + rj({ t: 'cat', a: c.id, k: i, tok: '', st: [] }) + '">' + h(q) + '</button>'; }).join('') + '</div>' +
+      '<p class="mu">' + (x.totalhits || 0) + ' articles matching “' + h(c.q[k]) + '”</p>' + cards(s) + pager(r, (d.continue || {}).sroffset),
+      function () { enrich(s.map(function (z) { return z.title; })); });
+  }).catch(function (e) { fail(e, tk); });
+};
+V.search = function (r, tk) {
+  api({ action: 'query', list: 'search', srsearch: r.a, srlimit: C.page, sroffset: r.tok || 0, srprop: 'snippet|wordcount|timestamp', srinfo: 'totalhits|suggestion' }).then(function (d) {
+    var s = d.query.search || [], x = d.query.searchinfo || {};
+    put(tk, bc([['Home', { t: 'home' }], ['Search']]) + '<h1>Search results</h1><p class="mu">' + (x.totalhits || 0) + ' results for <b>' + h(r.a) + '</b></p>' +
+      (x.suggestion ? '<p>Did you mean <a href="#" data-r="' + rj({ t: 'search', a: x.suggestion, tok: '', st: [] }) + '">' + h(x.suggestion) + '</a>?</p>' : '') + cards(s) + pager(r, (d.continue || {}).sroffset),
+      function () { enrich(s.map(function (z) { return z.title; })); });
+  }).catch(function (e) { fail(e, tk); });
+};
+V.tcat = function (r, tk) {
+  api({ action: 'query', list: 'categorymembers', cmtitle: 'Category:' + r.a, cmlimit: C.page, cmtype: 'page|subcat', cmcontinue: r.tok || undefined, cmprop: 'title|type' }).then(function (d) {
+    var m = d.query.categorymembers || [], sc = m.filter(function (x) { return x.type === 'subcat'; }), pg = m.filter(function (x) { return x.type !== 'subcat'; });
+    put(tk, bc([['Home', { t: 'home' }], ['Category'], [r.a]]) + '<h1>Category: ' + h(r.a) + '</h1>' +
+      (sc.length ? '<div class="chips">' + sc.map(function (x) { return '<a class="chip" href="#" data-r="' + rj({ t: 'tcat', a: x.title.replace(/^Category:/, ''), tok: '', st: [] }) + '">' + ic('folder', 16) + ' ' + h(x.title.replace(/^Category:/, '')) + '</a>'; }).join('') + '</div>' : '') +
+      (pg.length ? '<div class="grid1">' + pg.map(function (x) { return card(x.title, '', ''); }).join('') + '</div>' : '<p class="mu">No articles in this category.</p>') + pager(r, (d.continue || {}).cmcontinue),
+      function () { enrich(pg.map(function (z) { return z.title; })); });
+  }).catch(function (e) { fail(e, tk); });
+};
+V.recent = function (r, tk) {
+  var l = ls('bds_recent') || [];
+  put(tk, bc([['Home', { t: 'home' }], ['Recently viewed']]) + '<h1>Recently viewed</h1>' + (l.length ? '<div class="grid1">' + l.map(function (x) { return card(x.t, '', 'Viewed ' + fd(x.d)); }).join('') + '</div><p><button class="bt" data-act="clr">Clear history</button></p>' : '<p class="mu">Nothing yet — open an article and it will show here.</p>'), function () { enrich(l.map(function (x) { return x.t; })); });
+};
+V.article = function (r, tk) {
+  var ti = r.a.split('#')[0], fr = r.a.split('#')[1];
+  Promise.all([
+    api({ action: 'parse', page: ti, prop: 'text|categories', redirects: 1, disableeditsection: 1, disablelimitreport: 1, disabletoc: 1 }, 18e5),
+    api({ action: 'query', prop: 'revisions', rvprop: 'timestamp|user', titles: ti, redirects: 1 }, 18e5).catch(function () { return null; }),
+    info()
+  ]).then(function (a) {
+    var p = a[0].parse, pg = a[1] && a[1].query.pages && a[1].query.pages[0], rv = pg && pg.revisions && pg.revisions[0], si = a[2], rights = si && si.query.rightsinfo;
+    var t = p.title, body = clean(p.text), cats = (p.categories || []).filter(function (c) { return !c.hidden; }).map(function (c) { return c.category.replace(/_/g, ' '); });
+    var hs = Array.prototype.slice.call(body.querySelectorAll('h2,h3,h4')), n = 0;
+    var toc = hs.map(function (e) { if (!e.id) e.id = 'w-h' + (n++); return '<a class="l' + e.tagName[1] + '" href="#" data-anc="' + h(e.id) + '">' + h(e.textContent.replace(/\[edit\]/, '')) + '</a>'; }).join('');
+    var words = body.textContent.trim().split(/\s+/).length, orig = C.origin + '/wiki/' + encodeURIComponent(t.replace(/ /g, '_')).replace(/%3A/g, ':'), hist = C.origin + '/w/index.php?title=' + encodeURIComponent(t) + '&action=history';
+    var from = stack.length && stack[stack.length - 1].t === 'cat' ? CATS.filter(function (c) { return c.id === stack[stack.length - 1].a; })[0] : null;
+    addRecent(t);
+    put(tk, bc([['Home', { t: 'home' }]].concat(from ? [[from.n, { t: 'cat', a: from.id, k: 0, tok: '', st: [] }]] : [], [[t]])) +
+      '<article class="art"><h1>' + h(t) + '</h1><div class="meta"><span>' + ic('clock', 16) + ' ' + Math.max(1, Math.round(words / 200)) + ' min read</span>' + (rv ? '<span>Last edited ' + fd(rv.timestamp) + ' by ' + h(rv.user) + '</span>' : '') + '</div>' +
+      '<div class="acts"><button class="bt" data-act="back">← Back</button><a class="bt" target="_blank" rel="noopener" href="' + h(orig) + '">Original on TheoGo ↗</a><button class="bt" data-act="copy" data-t="' + h(t) + '">' + ic('link', 16) + ' Copy link</button></div>' +
+      (t.toLowerCase() !== ti.replace(/_/g, ' ').toLowerCase() ? '<p class="mu">Redirected from “' + h(ti) + '”.</p>' : '') +
+      (toc ? '<details class="mtoc"><summary>On this page</summary>' + toc + '</details>' : '') +
+      '<div class="body">' + body.innerHTML + '</div>' +
+      (cats.length ? '<div class="chips"><b>Categories:</b> ' + cats.map(function (c) { return '<a class="chip" href="#" data-r="' + rj({ t: 'tcat', a: c, tok: '', st: [] }) + '">' + h(c) + '</a>'; }).join('') + '</div>' : '') +
+      '<div class="attr"><b>Source &amp; licence</b><p>This article comes from <a target="_blank" rel="noopener" href="' + h(orig) + '">TheoGo</a>, a community wiki. Text is available under ' + (rights ? '<a target="_blank" rel="noopener" href="' + h(rights.url) + '">' + h(rights.text) + '</a>' : 'the licence shown on TheoGo') + ' unless noted otherwise; authors are credited in the <a target="_blank" rel="noopener" href="' + h(hist) + '">page history</a>. Images belong to their owners — each file page on TheoGo states its licence. BDStudyMaterial shows the content unmodified apart from safety sanitising and layout.</p></div></article>' +
+      '<section id="rel"></section>', function () {
+        if (toc) { $('#toc').innerHTML = '<b>On this page</b>' + toc; $('.wrap').classList.add('ht'); }
+        if (fr) { try { fr = decodeURIComponent(fr); } catch (x) {} jump('w-' + fr.replace(/ /g, '_')); }
+        rel(t, cats).then(function (l) { if (tk === tok && l.length) { $('#rel').innerHTML = '<h2>Related articles</h2><div class="grid1">' + l.map(function (x) { return card(x.title, x.snippet ? snip(x.snippet) : '', ''); }).join('') + '</div>'; enrich(l.map(function (x) { return x.title; })); } });
       });
-    }
-
-    if (!splitBillState.members.length) return showToast('No other members found.', 'error');
-
-    splitBillState.total = 0;
-    splitBillState.mode = 'request';
-    splitBillState.selected = new Set(); // ← EMPTY by default now
-
-    elements.splitBillTotal.value = '';
-    elements.splitBillMsg.classList.add('hidden');
-    elements.splitBillMsg.classList.remove('error', 'success');
-
-    document.querySelectorAll('#splitBillMode button').forEach(b => {
-      b.classList.toggle('active', b.dataset.smode === 'request');
-    });
-
-    renderSplitMembers();
-    updateSplitSummary();
-
-    openModal(elements.splitBillModal);
-  } finally {
-    _splitBillOpening = false;
-  }
-}
-
-function renderSplitMembers() {
-  const wrap = elements.splitBillMembers;
-  if (!wrap) return;
-  wrap.innerHTML = '';
-  splitBillState.members.forEach(m => {
-    const isSelected = splitBillState.selected.has(m.id);
-    const row = document.createElement('div');
-    row.className = 'split-member' + (isSelected ? ' selected' : '');
-    const initial = m.display_name.charAt(0).toUpperCase();
-    const ring = m.is_premium ? ' premium-avatar' : '';
-    const safeAvatar = m.avatar_url ? escapeStyleUrl(m.avatar_url) : "";
-    row.innerHTML =
-      '<label class="split-member-check">' +
-        '<input type="checkbox" ' + (isSelected ? 'checked' : '') + ' data-uid="' + m.id + '">' +
-        '<span class="smc-box"></span>' +
-      '</label>' +
-      '<div class="avatar-small' + ring + '"' +
-        (safeAvatar ? ' style="background-image:url(\'' + safeAvatar + '\');color:transparent;"' : '') + '>' + escapeHtml(initial) + '</div>' +
-      '<span class="split-name">' + escapeHtml(m.display_name) +
-        (m.is_premium ? ' 👑' : '') + '</span>' +
-      '<input type="number" class="split-custom-input" min="0" step="0.01" placeholder="₹" ' +
-        'data-custom-for="' + m.id + '" ' + (isSelected ? '' : 'disabled ') +
-        'value="' + (m.customAmount != null ? m.customAmount : '') + '">' +
-      '<span class="split-amount" data-amount-for="' + m.id + '"></span>';
-    const input = row.querySelector('input[type="checkbox"]');
-    input.addEventListener('change', (e) => {
-      if (e.target.checked) splitBillState.selected.add(m.id);
-      else splitBillState.selected.delete(m.id);
-      row.classList.toggle('selected', e.target.checked);
-      const customInput = row.querySelector('.split-custom-input');
-      customInput.disabled = !e.target.checked;
-      if (!e.target.checked) m.customAmount = null;
-      updateSplitSummary();
-    });
-    const customInput = row.querySelector('.split-custom-input');
-    customInput.addEventListener('input', (e) => {
-      const v = parseFloat(e.target.value);
-      m.customAmount = isFinite(v) && v > 0 ? v : null;
-      updateSplitSummary();
-    });
-    wrap.appendChild(row);
-  });
-  updateSplitSummary();
-}
-
-function updateSplitSummary() {
-  const total = parseFloat(elements.splitBillTotal.value || 0) || 0;
-  const selectedMembers = splitBillState.members.filter(m => splitBillState.selected.has(m.id));
-  const count = selectedMembers.length;
-
-  // Determine how many members use custom amounts
-  let customSum = 0;
-  let nonCustomCount = 0;
-  selectedMembers.forEach(m => {
-    if (m.customAmount != null && m.customAmount > 0) customSum += m.customAmount;
-    else nonCustomCount++;
-  });
-
-  const remainingTotal = Math.max(0, total - customSum);
-  const share = nonCustomCount > 0 ? remainingTotal / nonCustomCount : 0;
-  const fee = calculateFeePreview(share);
-  const totalPerPerson = share + fee;
-
-  elements.splitPerPerson.textContent = '₹' + formatMoney(share);
-  elements.splitFeePct.textContent = String(currentFeePct());
-  elements.splitFeeAmount.textContent = '+₹' + formatMoney(fee);
-  elements.splitTotalPerPerson.textContent = '₹' + formatMoney(totalPerPerson);
-
-  splitBillState.members.forEach(m => {
-    const el = document.querySelector('[data-amount-for="' + m.id + '"]');
-    if (!el) return;
-    if (!splitBillState.selected.has(m.id)) { el.textContent = ''; return; }
-    const amt = (m.customAmount != null && m.customAmount > 0) ? m.customAmount : share;
-    const feePer = calculateFeePreview(amt);
-    if (splitBillState.mode === 'request') {
-      el.textContent = '₹' + formatMoney(amt + feePer);
-    } else {
-      el.textContent = '₹' + formatMoney(amt);
-    }
+  }).catch(function (e) { fail(e, tk); });
+};
+function rel(ti, cats) {
+  return Promise.all([cats[0] ? api({ action: 'query', list: 'categorymembers', cmtitle: 'Category:' + cats[0], cmlimit: 12, cmnamespace: 0 }).catch(function () { return null; }) : null, api({ action: 'query', list: 'search', srsearch: ti, srlimit: 8, srprop: 'snippet' }).catch(function () { return null; })]).then(function (a) {
+    var seen = {}, o = [];
+    ((a[0] && a[0].query.categorymembers) || []).concat((a[1] && a[1].query.search) || []).forEach(function (x) { if (x.title !== ti && !seen[x.title]) { seen[x.title] = 1; o.push(x); } });
+    return o.slice(0, 6);
   });
 }
+function jump(id) { var e = Array.prototype.slice.call(R.querySelectorAll('.art [id]')).filter(function (x) { return x.id === id; })[0]; if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 
-async function doSplitBill() {
-  const total = parseFloat(elements.splitBillTotal.value || 0);
-  if (!(total >= WALLET_MIN_AMOUNT)) return walletShowMsg(elements.splitBillMsg, 'Enter a total amount.', 'error');
-  const uids = Array.from(splitBillState.selected);
-  if (!uids.length) return walletShowMsg(elements.splitBillMsg, 'Select at least one member.', 'error');
+/* ---------- Suggestions (opensearch) ---------- */
+function sug(inp, box, done) {
+  var t, i = -1, it = [];
+  var hide = function () { box.hidden = true; i = -1; };
+  var go = function (k) { hide(); if (done) done(); if (k >= 0 && it[k]) nav({ t: 'article', a: it[k], st: [] }); else if (inp.value.trim()) nav({ t: 'search', a: inp.value.trim(), tok: '', st: [] }); };
+  var mark = function () { Array.prototype.forEach.call(box.children, function (c, j) { c.classList.toggle('on', j === i); }); };
+  inp.addEventListener('input', function () {
+    clearTimeout(t); var v = inp.value.trim(); if (v.length < 2) { hide(); return; }
+    t = setTimeout(function () {
+      api({ action: 'opensearch', search: v, limit: 8, namespace: 0 }, 12e4).then(function (d) {
+        if (inp.value.trim() !== v) return; it = d[1] || []; i = -1;
+        box.innerHTML = it.map(function (x, k) { return '<div class="si" data-k="' + k + '">' + h(x) + '</div>'; }).join('') + '<div class="si" data-k="-1">Search “' + h(v) + '” →</div>'; box.hidden = false;
+      }).catch(function () { box.innerHTML = '<div class="si">Suggestions unavailable — press Enter to search</div>'; box.hidden = false; });
+    }, 220);
+  });
+  inp.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); i = Math.min(i + 1, box.children.length - 1); mark(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); i = Math.max(i - 1, -1); mark(); }
+    else if (e.key === 'Enter') { e.preventDefault(); go(i >= 0 && i < it.length ? i : -1); }
+    else if (e.key === 'Escape') hide();
+  });
+  box.addEventListener('mousedown', function (e) { var s = e.target.closest('.si'); if (s && s.dataset.k != null) { e.preventDefault(); go(+s.dataset.k); } });
+  inp.addEventListener('blur', function () { setTimeout(hide, 150); });
+}
 
-  // Compute per-member amounts
-  const selectedMembers = splitBillState.members.filter(m => splitBillState.selected.has(m.id));
-  const customSum = selectedMembers.reduce((s, m) => s + (m.customAmount != null ? m.customAmount : 0), 0);
-  const nonCustomCount = selectedMembers.filter(m => m.customAmount == null).length;
-  const remainingTotal = Math.max(0, total - customSum);
-  const autoShare = nonCustomCount > 0 ? remainingTotal / nonCustomCount : 0;
+/* ---------- Palette, lightbox, diagnostics ---------- */
+function pal(on) { var p = $('#pal'); p.hidden = !on; if (on) { var q = $('#pq'); q.value = ''; $('#psg').hidden = true; q.focus(); } }
+function lb(im, href) {
+  var s = im.src; if (/\/thumb\//.test(s)) s = s.replace('/thumb/', '/').replace(/\/[^\/]+$/, '');
+  var l = $('#lb'); l.innerHTML = '<img referrerpolicy="no-referrer" alt="' + h(im.alt) + '" src="' + h(s) + '"><div><button class="bt w" data-act="lbx">Close ✕</button>' + (href ? ' <a class="bt w" target="_blank" rel="noopener" href="' + h(href) + '">File page &amp; licence ↗</a>' : '') + '</div>';
+  l.querySelector('img').onerror = function () { this.onerror = null; this.src = im.src; }; l.hidden = false;
+}
+function diag() {
+  var d = $('#dg'), b = d.querySelector('.pbx'), first = null; d.hidden = false;
+  b.innerHTML = '<h3>TheoGo API status</h3><div id="dgl"></div><p class="mu">Page origin: ' + h(location.origin) + '</p><button class="bt" data-act="dgx">Close</button>';
+  var T = [['CORS + siteinfo', function () { return { action: 'query', meta: 'siteinfo', siprop: 'general' }; }], ['Live search', function () { return { action: 'query', list: 'search', srsearch: 'bible', srlimit: 3 }; }, function (d) { first = d.query.search[0] && d.query.search[0].title; }],
+    ['Article parse', function () { return { action: 'parse', page: first || 'Main Page', prop: 'text', redirects: 1 }; }], ['Categories', function () { return { action: 'query', list: 'allcategories', aclimit: 5 }; }], ['Suggestions', function () { return { action: 'opensearch', search: 'gen', limit: 3 }; }]];
+  T.reduce(function (pr, x) {
+    return pr.then(function () {
+      var t0 = performance.now(), row = document.createElement('div'); $('#dgl').appendChild(row);
+      return api(x[1](), -1).then(function (r) { if (x[2]) x[2](r); row.innerHTML = ic('ok', 18) + ' ' + h(x[0]) + ' — ' + Math.round(performance.now() - t0) + ' ms'; }).catch(function (e) { row.innerHTML = ic('bad', 18) + ' ' + h(x[0]) + ' — ' + h(e.message || e); });
+    });
+  }, Promise.resolve());
+}
 
-  const perAmounts = {};
-  for (const m of selectedMembers) {
-    const amt = m.customAmount != null ? m.customAmount : autoShare;
-    if (amt < WALLET_MIN_AMOUNT) {
-      return walletShowMsg(elements.splitBillMsg, 'One share is below the minimum (₹' + WALLET_MIN_AMOUNT + ').', 'error');
-    }
-    perAmounts[m.id] = +amt.toFixed(2);
-  }
+/* ---------- Show / hide (in-memory only, never persisted) ---------- */
+function setInert(on) {
+  if (on) Array.prototype.forEach.call(document.body.children, function (e) { if (e.tagName !== 'SCRIPT' && !e.inert) { e.inert = true; ino.push(e); } });
+  else { ino.forEach(function (e) { e.inert = false; }); ino = []; }
+}
+function hide() { clearTimeout(tm); tm = setTimeout(show, C.reshowMs); vis = false; host.style.display = 'none'; setInert(false); if (C.returnBtn) ret.style.display = 'block'; try { window.dispatchEvent(new Event('resize')); } catch (e) {} }
+function show() { clearTimeout(tm); vis = true; host.style.display = 'block'; ret.style.display = 'none'; setInert(true); }
 
-  elements.splitBillGo.disabled = true;
-  elements.splitBillGo.textContent = 'Creating…';
+/* ---------- Shell ---------- */
+var CSS = ':host{all:initial}*{box-sizing:border-box}[hidden]{display:none!important}' +
+'.app{--p:#144097;--bg:#fff;--fg:#1b2437;--mu:#667085;--bd:#e2e7f0;--sf:#f5f7fb;position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);color:var(--fg);font:15px/1.6 Inter,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}' +
+'.app[data-t=dark]{--p:#7aa5f7;--bg:#0f1624;--fg:#e8ecf3;--mu:#97a4bb;--bd:#26324a;--sf:#172033}' +
+'a{color:var(--p);text-decoration:none}a:hover{text-decoration:underline}button{font:inherit;color:inherit;cursor:pointer}h1{font-size:1.9rem;line-height:1.2;margin:.2em 0 .4em}h2{font-size:1.25rem;margin:1.6em 0 .6em}.mu{color:var(--mu)}' +
+'header{height:56px;flex:none;background:#144097;color:#fff;display:flex;align-items:center;gap:10px;padding:0 12px;box-shadow:0 2px 8px #0003;z-index:5}.app[data-t=dark] header{background:#0d2a66}' +
+'.logo{color:#fff;font-size:1.1rem;white-space:nowrap}.logo:hover{text-decoration:none}.ib{background:#ffffff1f;border:0;color:#fff;width:38px;height:38px;border-radius:10px;font-size:18px}.ib:hover{background:#ffffff38}' +
+'.sb{position:relative;flex:1;max-width:560px;margin:0 auto}.sb input{width:100%;height:38px;border-radius:10px;border:1px solid transparent;padding:0 14px;font:inherit;background:#ffffff26;color:#fff;outline:0}.sb input::placeholder{color:#ffffffbb}.sb input:focus{background:#fff;color:#1b2437}.sb.big input{height:50px;font-size:1.05rem;background:#fff;color:#1b2437}.sb.big input::placeholder{color:#8a94a6}' +
+'.sg{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:10px;box-shadow:0 10px 30px #0003;overflow:hidden;z-index:20}.si{padding:9px 14px;cursor:pointer}.si:hover,.si.on{background:var(--sf);color:var(--p)}' +
+'.pb{position:absolute;left:0;top:56px;height:3px;width:0;background:#f59e0b;z-index:6;opacity:0}.pb.on{opacity:1;animation:pb 1.4s ease-in-out infinite}@keyframes pb{0%{width:0;left:0}50%{width:60%;left:20%}100%{width:0;left:100%}}' +
+'.wrap{flex:1;display:grid;grid-template-columns:270px minmax(0,1fr);min-height:0}.wrap.ht{grid-template-columns:270px minmax(0,1fr) 230px}' +
+'nav#nav{display:flex;flex-direction:column;background:var(--sf);border-right:1px solid var(--bd);overflow:auto;padding:12px 8px}.nh{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu);padding:14px 10px 4px}' +
+'.ni{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:0;border:0;padding:8px 10px;border-radius:8px;color:var(--fg)}.ni:hover{background:var(--bd);text-decoration:none}.ni.on{background:var(--p);color:#fff}.app[data-t=dark] .ni.on{color:#0f1624}' +
+'main{overflow:auto;padding:22px clamp(14px,4vw,44px) 30px;overscroll-behavior:contain}aside#toc{overflow:auto;padding:22px 14px;border-left:1px solid var(--bd);font-size:.88rem}aside#toc a{display:block;padding:3px 0;color:var(--mu)}aside#toc a:hover{color:var(--p)}.l3{padding-left:12px!important}.l4{padding-left:24px!important}aside#toc:empty{display:none}' +
+'.bc{font-size:.85rem;color:var(--mu);margin-bottom:6px}.bc span{margin:0 6px}.bc em{font-style:normal;color:var(--fg)}' +
+'.hero{background:linear-gradient(135deg,#144097,#2563d4);color:#fff;border-radius:16px;padding:30px clamp(16px,4vw,38px);margin-bottom:10px}.hero h1{margin:0}.hero p{opacity:.92}.hero .sb{max-width:640px;margin:16px 0}.hero a{color:#fff}.stats{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:.9rem}.warn{background:#0003;padding:8px 12px;border-radius:8px}' +
+'.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.grid1{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}' +
+'.cc,.card{display:block;border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--bg);color:var(--fg);transition:.15s}.cc:hover,.card:hover{border-color:var(--p);box-shadow:0 6px 18px #14409722;text-decoration:none;transform:translateY(-1px)}.cc span{font-size:1.6rem}.cc b{display:block;color:var(--p)}.cc p,.card p{margin:.2em 0 0;color:var(--mu);font-size:.88rem}' +
+'.card{display:flex;gap:12px}.th{flex:none;width:64px;height:64px;border-radius:10px;background:var(--sf);display:flex;align-items:center;justify-content:center;font-size:1.5rem;overflow:hidden}.th img{width:100%;height:100%;object-fit:cover}.cb{min-width:0}.cb b{color:var(--p)}.card p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.card small{color:var(--mu)}mark{background:#fde68a;color:#111;border-radius:3px;padding:0 2px}' +
+'.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}.chip{border:1px solid var(--bd);background:var(--sf);border-radius:999px;padding:4px 12px;font-size:.88rem;color:var(--fg)}.chip:hover,.chip.on{background:var(--p);color:#fff;border-color:var(--p);text-decoration:none}.chip small{opacity:.7}' +
+'.bt{display:inline-block;border:1px solid var(--bd);background:var(--bg);border-radius:9px;padding:7px 14px;color:var(--fg);font-size:.9rem}.bt:hover{border-color:var(--p);color:var(--p);text-decoration:none}.bt.w{background:#ffffff26;color:#fff;border-color:#ffffff55}.bt.w:hover{background:#fff;color:#144097}.pg{display:flex;gap:10px;justify-content:center;margin:20px 0}.acts{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 16px}.meta{display:flex;gap:16px;flex-wrap:wrap;color:var(--mu);font-size:.85rem}' +
+'.art{max-width:900px}.body{overflow-wrap:anywhere}.body h2,.body h3,.body h4{border-bottom:1px solid var(--bd);padding-bottom:.2em;scroll-margin-top:12px}.body h3,.body h4{border:0}.body img{max-width:100%;height:auto;cursor:zoom-in;border-radius:4px}.body figure{margin:12px 0;max-width:100%}.body figcaption,.body .thumbcaption{font-size:.82rem;color:var(--mu)}' +
+'.body .tright,.body .mw-halign-right{float:right;margin:4px 0 12px 16px;max-width:45%}.body .tleft,.body .mw-halign-left{float:left;margin:4px 16px 12px 0;max-width:45%}.tw{overflow-x:auto;margin:12px 0}.body table{border-collapse:collapse}.body td,.body th{border:1px solid var(--bd);padding:6px 10px}.body th{background:var(--sf)}' +
+'.body blockquote{border-left:4px solid var(--p);margin:1em 0;padding:.2em 1em;color:var(--mu)}.body pre{background:var(--sf);padding:12px;overflow:auto;border-radius:8px}.body sup.reference a{font-size:.8em}.body .reflist,.body .references{font-size:.86rem;color:var(--mu)}.body a.ext:after{content:" ↗";font-size:.75em}.missing{color:#c2410c}' +
+'.mtoc{display:none;background:var(--sf);border-radius:10px;padding:8px 12px;margin:10px 0}.mtoc a{display:block;padding:3px 0}.attr{margin-top:30px;padding:14px 16px;border:1px solid var(--bd);border-left:4px solid var(--p);border-radius:10px;background:var(--sf);font-size:.86rem;color:var(--mu)}' +
+'.ld{display:flex;align-items:center;gap:12px;color:var(--mu);padding:40px 0}.ld i{width:22px;height:22px;border:3px solid var(--bd);border-top-color:var(--p);border-radius:50%;animation:sp .8s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}.err{max-width:560px;margin:40px auto;text-align:center}footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--bd);font-size:.8rem;color:var(--mu)}' +
+'.navbot{margin-top:auto;position:sticky;bottom:0;background:var(--sf);padding:12px 0 4px}.com{width:100%;border:0;border-radius:12px;background:#144097;color:#fff;padding:12px 16px;font-weight:700;box-shadow:0 6px 18px #14409755;display:flex;gap:10px;align-items:center;justify-content:center}.com:hover{background:#1b55c9}.app[data-t=dark] .com{background:#2f66d8}' +
+'.ov{position:absolute;inset:0;z-index:30;background:#0008;display:flex;justify-content:center;align-items:flex-start;padding:10vh 14px}.pbx{width:100%;max-width:560px;background:var(--bg);border-radius:14px;padding:14px;box-shadow:0 20px 60px #0006;position:relative}.pbx input{width:100%;height:44px;border:1px solid var(--bd);border-radius:10px;padding:0 12px;font:inherit;background:var(--bg);color:var(--fg)}.pbx .sg{position:static;box-shadow:none;margin-top:8px}#pact{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}' +
+'#lb{position:absolute;inset:0;z-index:40;background:#000d;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;padding:14px}#lb img{max-width:96%;max-height:80%;object-fit:contain;background:#fff;border-radius:6px}' +
+'.ic{flex:none;display:inline-block;vertical-align:middle}.ib{display:inline-flex;align-items:center;justify-content:center;padding:0}.logo{display:inline-flex;align-items:center;gap:8px}.hi{display:flex;align-items:center;gap:10px}.bt,.chip{display:inline-flex;gap:6px;align-items:center}.stats span,.meta span{display:inline-flex;gap:6px;align-items:center}#dgl div{display:flex;gap:8px;align-items:center;padding:3px 0}.cc span{display:block;margin-bottom:4px}.scrim{display:none}@media(max-width:900px){.wrap,.wrap.ht{grid-template-columns:minmax(0,1fr)}nav#nav{position:absolute;top:56px;bottom:0;left:0;width:280px;z-index:8;transform:translateX(-102%);transition:.2s;box-shadow:6px 0 20px #0004}.app.open nav#nav{transform:none}.app.open .scrim{display:block;position:absolute;inset:56px 0 0;background:#0006;z-index:7}aside#toc{display:none}.mtoc{display:block}.logo .lt span{display:none}.body .tright,.body .tleft,.body .mw-halign-right,.body .mw-halign-left{float:none;max-width:100%;margin:10px 0}}';
 
-  if (splitBillState.mode === 'pay') {
-    let totalCost = 0;
-    for (const uid of uids) totalCost += perAmounts[uid] + calculateFeePreview(perAmounts[uid]);
-    if (totalCost > myWallet.balance) {
-      walletShowMsg(elements.splitBillMsg, 'Not enough balance. Need ₹' + formatMoney(totalCost) + '.', 'error');
-      elements.splitBillGo.disabled = false;
-      elements.splitBillGo.textContent = 'Create split';
+function shell() {
+  var hm = rj({ t: 'home' });
+  return '<div class="app" data-t="light">' + SPR + '<header><button class="ib" data-act="nav" aria-label="Menu">' + ic('menu', 24) + '</button><a class="logo" href="#" data-r="' + hm + '">' + ic('logo', 28) + '<span class="lt"><b>BD</b><span>StudyMaterial</span></span></a>' +
+    '<div class="sb"><input id="q" placeholder="Search TheoGo… (Ctrl+K)" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="sg" id="sg" hidden></div></div><button class="ib" data-act="theme" title="Dark / light" aria-label="Toggle theme">' + ic('theme', 24) + '</button></header><div class="pb"></div>' +
+    '<div class="wrap"><nav id="nav"><a class="ni" href="#" data-r="' + hm + '">' + ic('home') + ' Home</a><div class="nh">Subjects</div>' +
+    CATS.map(function (c) { return '<a class="ni" href="#" data-r="' + rj({ t: 'cat', a: c.id, k: 0, tok: '', st: [] }) + '">' + ic(c.i, 20) + ' ' + c.n + '</a>'; }).join('') +
+    '<div class="nh">Explore</div><button class="ni" data-act="random">' + ic('dice') + ' Random article</button><a class="ni" href="#" data-r="' + rj({ t: 'recent' }) + '">' + ic('clock') + ' Recently viewed</a><button class="ni" data-act="pal">' + ic('search') + ' Search (Ctrl+K)</button>' +
+    '<div class="nh">TheoGo</div><a class="ni" target="_blank" rel="noopener" href="' + C.origin + '">' + ic('globe') + ' Open TheoGo ↗</a><button class="ni" data-act="diag">' + ic('flask') + ' API status</button>' +
+    '<div class="navbot"><button class="com" data-act="com">' + ic('chat', 22) + ' Communicate</button></div></nav>' +
+    '<main id="main"></main><aside id="toc"></aside></div><div class="scrim" data-act="nav"></div>' +
+    '<div class="ov" id="pal" hidden><div class="pbx"><input id="pq" placeholder="Search articles…" autocomplete="off" spellcheck="false"><div class="sg" id="psg" hidden></div><div id="pact"><button class="bt" data-act="home">Home</button><button class="bt" data-act="random">Random article</button><a class="bt" href="#" data-r="' + rj({ t: 'recent' }) + '">Recently viewed</a></div></div></div>' +
+    '<div id="lb" hidden></div><div class="ov" id="dg" hidden><div class="pbx"></div></div></div>';
+}
+
+function start() {
+  host = document.createElement('div'); host.id = 'bds-portal'; host.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483000;display:block;background:#fff';
+  R = host.attachShadow({ mode: 'open' }); R.innerHTML = '<style>' + CSS + '</style>' + shell();
+  (document.body || document.documentElement).appendChild(host);
+  ret = document.createElement('div'); ret.style.cssText = 'all:initial;position:fixed;left:14px;bottom:14px;z-index:2147482999;display:none';
+  var rs = ret.attachShadow({ mode: 'open' }); rs.innerHTML = SPR + '<style>button{all:unset;cursor:pointer;display:inline-flex;gap:7px;align-items:center;background:#144097;color:#fff;font:600 13px Inter,Arial,sans-serif;padding:10px 14px;border-radius:999px;box-shadow:0 6px 18px #0005}@media(max-width:900px){button{margin-bottom:68px}}</style><button title="Back to BDStudyMaterial">' + ic('logo', 18) + ' Portal</button>';
+  rs.querySelector('button').onclick = show; (document.body || document.documentElement).appendChild(ret);
+  var th = ls('bds_theme'); if (th === 'dark') $('.app').dataset.t = 'dark';
+  sug($('#q'), $('#sg')); sug($('#pq'), $('#psg'), function () { pal(false); });
+
+  R.addEventListener('click', function (e) {
+    var t = e.target, im = t.closest && t.closest('.body img');
+    if (im) { e.preventDefault(); var a = im.closest('a'); lb(im, a && a.href !== location.href + '#' ? a.href : null); return; }
+    var el = t.closest('[data-r]'); if (el) { e.preventDefault(); pal(false); nav(JSON.parse(el.dataset.r)); return; }
+    var an = t.closest('[data-anc]'); if (an) { e.preventDefault(); jump(an.dataset.anc); return; }
+    var ac = t.closest('[data-act]'); if (ac) {
+      var x = ac.dataset.act; e.preventDefault();
+      if (x === 'com') hide();
+      else if (x === 'nav') $('.app').classList.toggle('open');
+      else if (x === 'theme') { var A = $('.app'); A.dataset.t = A.dataset.t === 'dark' ? 'light' : 'dark'; ls('bds_theme', A.dataset.t); }
+      else if (x === 'random') { pal(false); $('.pb').classList.add('on'); api({ action: 'query', list: 'random', rnnamespace: 0, rnlimit: 1 }, -1).then(function (d) { nav({ t: 'article', a: d.query.random[0].title, st: [] }); }).catch(function (er) { fail(er, tok); }); }
+      else if (x === 'pal') pal(true);
+      else if (x === 'home') { pal(false); nav({ t: 'home' }); }
+      else if (x === 'back') back();
+      else if (x === 'retry') render();
+      else if (x === 'diag') diag();
+      else if (x === 'dgx') $('#dg').hidden = true;
+      else if (x === 'lbx') $('#lb').hidden = true;
+      else if (x === 'clr') { ls('bds_recent', []); render(); }
+      else if (x === 'copy') { var u = location.origin + location.pathname + '?bds=' + encodeURIComponent(ac.dataset.t); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function () { ac.textContent = '✓ Copied'; }).catch(function () { window.prompt('Copy this link:', u); }); }
       return;
     }
-  }
-
-  try {
-    if (splitBillState.mode === 'request') {
-      // Use RPC if available, else fall back to sending individual requests
-      const { data, error } = await db.rpc('create_split_bill', {
-        p_conversation_id: currentConversation.id,
-        p_total_amount: total,
-        p_user_ids: uids,
-        p_mode: 'request',
-        p_title: 'Split bill'
-      });
-      if (error) throw error;
-      if (data && data.ok === false) throw new Error(data.error || 'Could not create split');
-      walletShowMsg(elements.splitBillMsg, 'Split requests sent to ' + uids.length + ' member' + (uids.length === 1 ? '' : 's') + '.', 'success');
-    } else {
-      let ok = 0, fail = 0;
-      for (const uid of uids) {
-        try {
-          await sendMoneyRpc({
-            toUserId: uid,
-            amount: perAmounts[uid],
-            note: 'Split: ₹' + formatMoney(total) + ' total',
-            conversationId: currentConversation.id
-          });
-          ok++;
-        } catch (e) { fail++; }
-      }
-      if (fail === 0) {
-        walletShowMsg(elements.splitBillMsg, 'Paid ' + ok + ' member' + (ok === 1 ? '' : 's') + '.', 'success');
-      } else {
-        walletShowMsg(elements.splitBillMsg, ok + ' paid, ' + fail + ' failed.', 'error');
-      }
-    }
-
-    await refreshWalletData();
-    await loadConversations();
-    setTimeout(() => closeModal(elements.splitBillModal), 900);
-  } catch (e) {
-    walletShowMsg(elements.splitBillMsg, friendlyError(e), 'error');
-  } finally {
-    elements.splitBillGo.disabled = false;
-    elements.splitBillGo.textContent = 'Create split';
-  }
-}
-
-/* =========================================================
-   ADMIN REVERSE
-   ========================================================= */
-function openAdminReverse(txnId) {
-  adminReverseTarget = txnId;
-  elements.adminReverseReason.value = '';
-  elements.adminReverseMsg.classList.add('hidden');
-  openModal(elements.adminReverseModal);
-}
-async function doAdminReverse() {
-  if (!adminReverseTarget) return;
-  const reason = elements.adminReverseReason.value.trim();
-  elements.adminReverseGo.disabled = true;
-  elements.adminReverseGo.textContent = 'Reversing…';
-  try {
-    const { error } = await db.rpc('admin_reverse_transaction', { p_transaction_id: adminReverseTarget, p_reason: reason || null });
-    if (error) throw error;
-    closeModal(elements.adminReverseModal);
-    adminReverseTarget = null;
-    await refreshWalletData();
-    showToast('Reversed.', 'success');
-  } catch (e) { walletShowMsg(elements.adminReverseMsg, friendlyError(e), 'error'); }
-  finally { elements.adminReverseGo.disabled = false; elements.adminReverseGo.textContent = 'Reverse'; }
-}
-
-/* =========================================================
-   CSV EXPORT
-   ========================================================= */
-function downloadWalletCsv() {
-  const dmUid = (walletMode === 'dm' && walletDmPartner) ? walletDmPartner.id : null;
-
-  const chunks = [];
-  chunks.push('Date,Direction,Counterparty,Amount,Fee,Net,Status,Note,Transaction ID\n');
-
-  walletTransactions.forEach(t => {
-    if (t.kind === 'platform_fee') return;
-    const isSent = t.from_user === currentUser.id;
-    const otherId = isSent ? t.to_user : t.from_user;
-    if (dmUid && otherId !== dmUid) return;
-    const p = profileCache[otherId];
-    const row = [
-      new Date(t.created_at).toISOString(),
-      isSent ? 'Sent' : 'Received',
-      p ? (p.username || '') : '',
-      t.amount, t.fee || 0, t.net_amount || t.amount, t.status,
-      (t.note || '').replace(/"/g, "'"), t.id
-    ];
-    chunks.push(row.map(v => {
-      const s = String(v == null ? '' : v);
-      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    }).join(',') + '\n');
+    if (t.classList && t.classList.contains('ov')) t.hidden = true;
+    if (t.id === 'lb') t.hidden = true;
   });
+  window.addEventListener('keydown', function (e) {
+    if (!vis) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); e.stopImmediatePropagation(); pal(true); return; }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey) e.stopImmediatePropagation(); /* keep JustGo shortcuts from firing under the portal */
+    if (e.key === 'Escape') { pal(false); $('#lb').hidden = true; $('#dg').hidden = true; $('.app').classList.remove('open'); }
+  }, true);
 
-  const blob = new Blob(chunks, { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const suffix = dmUid ? '-with-' + (walletDmPartner.username || 'user') : '';
-  a.href = url;
-  a.download = 'justgo-wallet' + suffix + '-' + new Date().toISOString().slice(0, 10) + '.csv';
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-  showToast('Statement downloaded.', 'success');
+  var qs = new URLSearchParams(location.search), a = qs.get('bds'), s = qs.get('bdsq');
+  nav(a ? { t: 'article', a: a, st: [] } : s ? { t: 'search', a: s, tok: '', st: [] } : { t: 'home' }, true);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { if (vis) setInert(true); }); else setInert(true);
+  window.BDStudy = { show: show, hide: hide, open: function (t) { nav({ t: 'article', a: t, st: [] }); }, search: function (q) { nav({ t: 'search', a: q, tok: '', st: [] }); }, test: diag };
 }
-
-/* =========================================================
-   PAY LINK
-   ========================================================= */
-async function handlePayLinkFromUrl() {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const pay = params.get('pay');
-    const amount = params.get('amount');
-    if (!pay) return;
-    if (window.history && window.history.replaceState)
-      window.history.replaceState({}, document.title, window.location.pathname);
-    const username = String(pay).replace(/^@/, '').trim().toLowerCase();
-    const { data: prof } = await db.from('profiles')
-      .select('id, username, display_name, avatar_url, is_premium').eq('username', username).maybeSingle();
-    if (!prof) return showToast('Pay link: user not found.', 'error');
-    if (prof.id === currentUser.id) return showToast("That's your own link.", 'error');
-    setTimeout(() => {
-      openWalletModal({ mode: 'dm', partner: prof });
-      if (amount && elements.walletSendAmount) {
-        elements.walletSendAmount.value = String(parseFloat(amount) || '');
-        updateWalletSendButton();
-      }
-    }, 250);
-  } catch (e) {}
-}
-
-function getMyPayLink() {
-  if (!currentProfile) return "";
-  return 'https://justgo.42web.io/?pay=' + encodeURIComponent(currentProfile.username);
-}
-
-function buildQRInto(container, text, size) {
-  if (!container) return;
-  size = size || 220;
-  // Tiny inline QR. Uses public API-free library (Google Chart deprecated).
-  // We'll use a data-uri QR through an external service that renders SVG.
-  // For privacy, alternatively you can generate QR locally with a bundled lib.
-  const url = "https://api.qrserver.com/v1/create-qr-code/?size=" + size + "x" + size +
-              "&data=" + encodeURIComponent(text) + "&margin=10";
-  container.innerHTML = '<img src="' + url + '" alt="QR code" width="' + size + '" height="' + size + '" loading="lazy">';
-}
-
-function shareMyPayLink() {
-  if (!currentProfile) return;
-  const link = getMyPayLink();
-
-  // Show the modal
-  if (elements.payLinkBox) elements.payLinkBox.textContent = link;
-  if (elements.payLinkMsg) { elements.payLinkMsg.textContent = ""; elements.payLinkMsg.classList.add("hidden"); }
-  buildQRInto(elements.payQR, link, 220);
-  openModal(elements.payLinkModal);
-}
-
-function bindPayLinkModalEvents() {
-  on(elements.payLinkCopy, "click", () => {
-    copyText(getMyPayLink(), "Pay link copied.");
-  });
-  on(elements.payLinkShare, "click", () => {
-    const link = getMyPayLink();
-    const text = "Pay me on JustGo: " + link;
-    if (navigator.share) {
-      navigator.share({ title: "My JustGo pay link", text: "Pay me on JustGo", url: link }).catch(() => {});
-    } else copyText(text, "Pay link copied.");
-  });
-}
-
-/* =========================================================
-   WALLET EVENT BINDING
-   ========================================================= */
-function bindWalletEvents() {
-  initWalletChipHover();
-  bindPayLinkModalEvents();
-
-  on(elements.walletClose, 'click', closeWalletModal);
-  on(elements.walletModal, 'click', e => { if (e.target === elements.walletModal) closeWalletModal(); });
-  on(elements.walletTabs, 'click', e => {
-    const b = e.target.closest('button[data-wtab]');
-    if (!b) return;
-    switchWalletTab(b.dataset.wtab);
-  });
-  on(elements.walletShareLinkBtn, 'click', shareMyPayLink);
-
-  on(elements.walletSendSearch, 'input', () => {
-    if (walletMode === 'dm') return;
-    walletSearchUsers(elements.walletSendSearch.value.trim(), elements.walletSendResults, u => {
-      walletSendTarget = u; renderWalletSelected('send', u);
-      elements.walletSendResults.innerHTML = ''; elements.walletSendSearch.value = '';
-      updateWalletSendButton();
-    });
-  });
-  on(elements.walletSendAmount, 'input', updateWalletSendButton);
-  document.querySelectorAll('.wallet-quick-amounts button[data-amt]').forEach(b => {
-    b.addEventListener('click', () => {
-      elements.walletSendAmount.value = b.dataset.amt;
-      updateWalletSendButton();
-    });
-  });
-  on(elements.walletSendBtn, 'click', () => {
-    if (!walletSendTarget) return;
-    const amount = parseFloat(elements.walletSendAmount.value || 0);
-    const note = elements.walletSendNote.value.trim();
-    if (!(amount >= WALLET_MIN_AMOUNT)) return showToast('Enter a valid amount.', 'error');
-    requestConfirmSend(walletSendTarget, amount, note);
-  });
-
-  on(elements.walletRequestSearch, 'input', () => {
-    if (walletMode === 'dm') return;
-    walletSearchUsers(elements.walletRequestSearch.value.trim(), elements.walletRequestResults, u => {
-      walletRequestTarget = u; renderWalletSelected('request', u);
-      elements.walletRequestResults.innerHTML = ''; elements.walletRequestSearch.value = '';
-      updateWalletRequestButton();
-    });
-  });
-  on(elements.walletRequestAmount, 'input', updateWalletRequestButton);
-  document.querySelectorAll('.wallet-quick-amounts button[data-ramt]').forEach(b => {
-    b.addEventListener('click', () => {
-      elements.walletRequestAmount.value = b.dataset.ramt;
-      updateWalletRequestButton();
-    });
-  });
-  on(elements.walletRequestBtn, 'click', doRequestMoney);
-
-  on(elements.walletHistoryFilter, 'click', e => {
-    const b = e.target.closest('button[data-hf]'); if (!b) return;
-    walletHistoryFilter = b.dataset.hf;
-    elements.walletHistoryFilter.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
-    renderWalletHistory();
-  });
-  on(elements.walletDownloadCsvBtn, 'click', downloadWalletCsv);
-
-  on(elements.walletDepositMsgAdminBtn, 'click', walletMessageAdminForDeposit);
-  const peerBtn = document.getElementById('walletDepositPeerBtn');
-  on(peerBtn, 'click', walletMessagePeerForDeposit);
-  on(elements.walletDepositFile, 'change', e => {
-    const f = e.target.files[0];
-    if (!f) {
-      walletDepositFile = null;
-      elements.walletDepositFileName.textContent = '';
-      elements.walletDepositPreview.innerHTML = '';
-      elements.walletDepositPreview.classList.add('hidden');
-      return;
-    }
-    if (f.size > 5 * 1024 * 1024) return showToast('Screenshot too large (max 5 MB).', 'error');
-    walletDepositFile = f;
-    elements.walletDepositFileName.textContent = f.name;
-    const url = URL.createObjectURL(f);
-    elements.walletDepositPreview.innerHTML = '<img src="' + url + '" alt="">';
-    elements.walletDepositPreview.classList.remove('hidden');
-  });
-  on(elements.walletDepositBtn, 'click', submitWalletDeposit);
-
-  // Withdraw options
-  const withdrawMethods = document.querySelectorAll('[data-withdraw-method]');
-  withdrawMethods.forEach(btn => {
-    btn.addEventListener('click', () => {
-      walletMessageAdminForWithdraw(btn.dataset.withdrawMethod);
-    });
-  });
-
-  on(elements.moneyComposerBtn, 'click', () => {
-    if (!currentConversation) return showToast('Open a chat first.', 'error');
-    if (currentConversation.is_group) { openSplitBillModal(); return; }
-    const other = currentParticipants.find(p => p.user_id !== currentUser.id);
-    if (!other) return showToast('Cannot identify the other user.', 'error');
-    getProfileCached(other.user_id).then(p => {
-      if (!p) return showToast('User not found.', 'error');
-      openWalletModal({ mode: 'dm', partner: p });
-    });
-  });
-  on(elements.openWalletFromSettingsBtn, 'click', () => { closeSettingsModal(); openWalletModal({ mode: 'header' }); });
-
-  on(elements.moneyConfirmClose, 'click', () => closeModal(elements.moneyConfirmModal));
-  on(elements.moneyConfirmCancel, 'click', () => closeModal(elements.moneyConfirmModal));
-  on(elements.moneyConfirmModal, 'click', e => { if (e.target === elements.moneyConfirmModal) closeModal(elements.moneyConfirmModal); });
-  on(elements.moneyConfirmGo, 'click', doConfirmSend);
-
-  on(elements.moneyReceiptClose, 'click', () => closeModal(elements.moneyReceiptModal));
-  on(elements.moneyReceiptModal, 'click', e => { if (e.target === elements.moneyReceiptModal) closeModal(elements.moneyReceiptModal); });
-
-  on(elements.splitBillClose, 'click', () => closeModal(elements.splitBillModal));
-  on(elements.splitBillModal, 'click', e => { if (e.target === elements.splitBillModal) closeModal(elements.splitBillModal); });
-  on(elements.splitBillTotal, 'input', updateSplitSummary);
-  on(elements.splitBillMode, 'click', e => {
-    const b = e.target.closest('button[data-smode]'); if (!b) return;
-    splitBillState.mode = b.dataset.smode;
-    elements.splitBillMode.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
-    updateSplitSummary();
-  });
-  on(elements.splitBillGo, 'click', doSplitBill);
-  if (elements.splitSelectAll) {
-    elements.splitSelectAll.addEventListener('click', () => {
-      const allSelected = splitBillState.selected.size === splitBillState.members.length;
-      splitBillState.selected = allSelected ? new Set() : new Set(splitBillState.members.map(m => m.id));
-      renderSplitMembers();
-    });
-  }
-
-  on(elements.tipClose, 'click', () => closeModal(elements.tipModal));
-  on(elements.tipModal, 'click', e => { if (e.target === elements.tipModal) closeModal(elements.tipModal); });
-  on(elements.tipAmount, 'input', updateTipFeePreview);
-  on(elements.tipGo, 'click', sendTip);
-  document.querySelectorAll('.wallet-quick-amounts button[data-tamt]').forEach(b => {
-    b.addEventListener('click', () => { elements.tipAmount.value = b.dataset.tamt; updateTipFeePreview(); });
-  });
-
-  on(elements.adminReverseClose, 'click', () => closeModal(elements.adminReverseModal));
-  on(elements.adminReverseModal, 'click', e => { if (e.target === elements.adminReverseModal) closeModal(elements.adminReverseModal); });
-  on(elements.adminReverseGo, 'click', doAdminReverse);
-
-  document.querySelectorAll('#contributeModal .wallet-quick-amounts button[data-camt]').forEach(b => {
-    b.addEventListener('click', () => {
-      if (elements.contributeAmount) {
-        elements.contributeAmount.value = b.dataset.camt;
-        updateContributeFeePreview();
-      }
-    });
-  });
-}
-
-function walletShowMsg(el, text, type) {
-  if (!el) return;
-  el.textContent = text;
-  el.classList.remove('hidden', 'error', 'success');
-  if (type) el.classList.add(type);
-}
-
-/* =========================================================
-   FUNDRAISER
-   ========================================================= */
-async function openCreateFundraiserModal() {
-  if (!currentConversation || !currentConversation.is_group) {
-    return showToast('Fundraisers are only for groups.', 'error');
-  }
-  currentFundraiser = null;
-  elements.fundraiserModalTitle.textContent = '🎯 Start a fundraiser';
-  elements.fundraiserBody.innerHTML = '';
-  elements.fundraiserBody.appendChild(buildFundraiserForm());
-  openModal(elements.fundraiserModal);
-}
-
-function buildFundraiserForm() {
-  const wrap = document.createElement('div');
-  wrap.innerHTML =
-    '<div class="field">' +
-      '<label for="fundraiserTitleInput">Title</label>' +
-      '<input id="fundraiserTitleInput" type="text" maxlength="120" placeholder="e.g. Help John buy books">' +
-    '</div>' +
-    '<div class="field">' +
-      '<label for="fundraiserDescInput">Description (optional)</label>' +
-      '<textarea id="fundraiserDescInput" rows="3" maxlength="280" placeholder="Tell people why you are raising this..."></textarea>' +
-    '</div>' +
-    '<div class="field">' +
-      '<label for="fundraiserGoalInput">Goal amount (₹)</label>' +
-      '<input id="fundraiserGoalInput" type="number" min="1" step="1" inputmode="decimal" placeholder="0">' +
-    '</div>' +
-    '<div class="field">' +
-      '<label for="fundraiserExpiryInput">Ends on (optional)</label>' +
-      '<input id="fundraiserExpiryInput" type="date">' +
-    '</div>' +
-    '<button id="fundraiserCreateBtn" class="auth-submit" type="button">Create fundraiser</button>' +
-    '<div id="fundraiserCreateMsg" class="auth-message hidden"></div>';
-
-  setTimeout(() => {
-    const btn = wrap.querySelector('#fundraiserCreateBtn');
-    btn.addEventListener('click', async () => {
-      const title = wrap.querySelector('#fundraiserTitleInput').value.trim();
-      const description = wrap.querySelector('#fundraiserDescInput').value.trim();
-      const goal = parseFloat(wrap.querySelector('#fundraiserGoalInput').value || 0);
-      const expiryRaw = wrap.querySelector('#fundraiserExpiryInput').value;
-      const msgEl = wrap.querySelector('#fundraiserCreateMsg');
-
-      function setMsg(m, type) {
-        msgEl.textContent = m;
-        msgEl.classList.remove('hidden', 'error', 'success');
-        if (type) msgEl.classList.add(type);
-      }
-
-      if (!title) return setMsg("Title is required.", "error");
-      if (!(goal > 0)) return setMsg("Enter a valid goal amount.", "error");
-
-      btn.disabled = true;
-      btn.textContent = "Creating…";
-
-      try {
-        const { data, error } = await db.from('group_fundraisers').insert({
-          conversation_id: currentConversation.id,
-          created_by: currentUser.id,
-          title,
-          description: description || null,
-          goal_amount: goal,
-          expires_at: expiryRaw ? new Date(expiryRaw + "T23:59:59").toISOString() : null,
-          is_active: true
-        }).select().single();
-        if (error) throw error;
-
-        const creatorName = currentProfile ? (currentProfile.display_name || currentProfile.username) : "someone";
-        await db.from("messages").insert({
-          conversation_id: currentConversation.id,
-          sender_id: currentUser.id,
-          content: "🎯 Started a fundraiser: " + title,
-          kind: 'fundraiser',
-          meta: {
-            fundraiser: {
-              id: data.id,
-              title: data.title,
-              description: data.description,
-              goal_amount: Number(data.goal_amount),
-              raised_amount: Number(data.raised_amount),
-              is_active: true,
-              created_by: currentUser.id,
-              creator_name: creatorName
-            }
-          }
-        });
-
-        setMsg("Created!", "success");
-        showToast("🎯 Fundraiser created.", "success");
-        setTimeout(() => {
-          closeModal(elements.fundraiserModal);
-          loadMessages();
-        }, 500);
-      } catch (e) {
-        setMsg(friendlyError(e), "error");
-        btn.disabled = false;
-        btn.textContent = "Create fundraiser";
-      }
-    });
-  }, 50);
-
-  return wrap;
-}
-
-async function openFundraiserDetails(fundraiser) {
-  if (!fundraiser || !fundraiser.id) return;
-  elements.fundraiserModalTitle.textContent = '🎯 ' + (fundraiser.title || 'Fundraiser');
-  elements.fundraiserBody.innerHTML = '<div class="search-empty">Loading…</div>';
-  openModal(elements.fundraiserModal);
-
-  try {
-    const { data: f } = await db.from('group_fundraisers').select('*').eq('id', fundraiser.id).maybeSingle();
-    const target = f || fundraiser;
-    const creator = await getProfileCached(target.created_by);
-    const creatorName = creator ? (creator.display_name || creator.username) : "Someone";
-
-    const { data: contribs } = await db.from('fundraiser_contributions')
-      .select('*').eq('fundraiser_id', target.id)
-      .order('created_at', { ascending: false }).limit(50);
-
-    const goal = Number(target.goal_amount || 0);
-    const raised = Number(target.raised_amount || 0);
-    const pct = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
-    const isCreator = target.created_by === currentUser.id;
-    const canContribute = target.is_active && !isCreator;
-
-    const wrap = document.createElement("div");
-
-    let contribHtml = '';
-    if (contribs && contribs.length) {
-      contribHtml = '<div class="chat-info-section-title">Recent contributions</div>';
-      for (const c of contribs) {
-        const p = await getProfileCached(c.contributor_id);
-        const name = p ? (p.display_name || p.username) : "User";
-        const initial = (name.charAt(0) || "U").toUpperCase();
-        const displayName = c.is_anonymous ? "Anonymous" : name;
-        const safeAvatar = (p && p.avatar_url && !c.is_anonymous) ? escapeStyleUrl(p.avatar_url) : "";
-        contribHtml +=
-          '<div class="chat-info-member">' +
-            '<div class="avatar-small' + (p && p.is_premium && !c.is_anonymous ? ' premium-avatar' : '') + '"' +
-              (safeAvatar ? ' style="background-image:url(\'' + safeAvatar + '\');color:transparent;"' : '') + '>' +
-              escapeHtml(c.is_anonymous ? "?" : initial) + '</div>' +
-            '<div class="chat-info-member-info"><strong>' + escapeHtml(displayName) + '</strong>' +
-              '<span>₹' + formatMoney(c.amount) + ' • ' + formatListTime(c.created_at) + '</span></div>' +
-          '</div>';
-      }
-    } else {
-      contribHtml = '<div class="chat-info-section-title">Contributions</div><div class="ci-empty">No contributions yet. Be the first!</div>';
-    }
-
-    wrap.innerHTML =
-      '<div class="fundraiser-card" style="margin:0 0 16px;">' +
-        '<div class="fundraiser-head">' +
-          '<div class="fundraiser-head-icon">🎯</div>' +
-          '<div class="fundraiser-head-body">' +
-            '<strong>' + escapeHtml(target.title) + '</strong>' +
-            '<span>By ' + escapeHtml(creatorName) + ' • ' + formatListTime(target.created_at) + '</span>' +
-          '</div>' +
-        '</div>' +
-        (target.description ? '<div style="font-size:13px;color:var(--text-muted);line-height:1.55;margin-bottom:12px;">' + escapeHtml(target.description) + '</div>' : '') +
-        '<div class="fundraiser-progress">' +
-          '<div class="fundraiser-progress-bar">' +
-            '<div class="fundraiser-progress-fill" style="width:' + pct + '%"></div>' +
-          '</div>' +
-          '<div class="fundraiser-progress-meta">' +
-            '<strong>₹' + formatMoney(raised) + '</strong>' +
-            '<span>of ₹' + formatMoney(goal) + ' (' + pct + '%)</span>' +
-          '</div>' +
-        '</div>' +
-        (canContribute ? '<div style="margin-top:12px;"><button id="frDetailsContributeBtn" class="fundraiser-btn primary" style="width:100%;" type="button">Contribute to this fundraiser</button></div>' : '') +
-      '</div>' +
-      contribHtml +
-      '<div id="frDetailsMsg" class="auth-message hidden"></div>';
-
-    elements.fundraiserBody.innerHTML = '';
-    elements.fundraiserBody.appendChild(wrap);
-
-    const btn = wrap.querySelector("#frDetailsContributeBtn");
-    if (btn) {
-      btn.addEventListener("click", () => {
-        closeModal(elements.fundraiserModal);
-        openContributeModal(target);
-      });
-    }
-  } catch (e) {
-    elements.fundraiserBody.innerHTML = '<div class="search-empty">Could not load fundraiser.</div>';
-  }
-}
-
-function openContributeModal(fundraiser) {
-  if (!fundraiser || !fundraiser.id) return;
-  currentContributeFundraiser = fundraiser;
-
-  const goal = Number(fundraiser.goal_amount || 0);
-  const raised = Number(fundraiser.raised_amount || 0);
-  const remaining = Math.max(0, goal - raised);
-
-  elements.contributeHero.innerHTML =
-    '<div class="ch-icon">🎯</div>' +
-    '<h3>' + escapeHtml(fundraiser.title || "Fundraiser") + '</h3>' +
-    '<p>₹' + formatMoney(raised) + ' raised of ₹' + formatMoney(goal) +
-      (remaining > 0 ? ' • ₹' + formatMoney(remaining) + ' to go' : ' • Goal reached! 🎉') + '</p>';
-
-  elements.contributeAmount.value = '';
-  elements.contributeNote.value = '';
-  elements.contributeAnonymous.checked = false;
-  elements.contributeMsg.classList.add('hidden');
-  elements.contributeMsg.classList.remove('error', 'success');
-  updateContributeFeePreview();
-
-  openModal(elements.contributeModal);
-}
-
-function updateContributeFeePreview() {
-  const amt = parseFloat(elements.contributeAmount.value || 0);
-  const preview = elements.contributeFeePreview;
-  if (!preview) return;
-  if (!amt || amt < WALLET_MIN_AMOUNT) {
-    preview.classList.add("hidden");
-    return;
-  }
-  const fee = calculateFeePreview(amt);
-  const total = amt + fee;
-  preview.classList.remove("hidden");
-  preview.innerHTML =
-    '<div class="wfp-row"><span>Contribution</span><strong>₹' + formatMoney(amt) + '</strong></div>' +
-    '<div class="wfp-row"><span>Fee (' + currentFeePct() + '%)</span><strong>+₹' + formatMoney(fee) + '</strong></div>' +
-    '<div class="wfp-row wfp-total"><span>You pay</span><strong>₹' + formatMoney(total) + '</strong></div>' +
-    '<div class="wfp-note">Goes directly to the fundraiser</div>';
-}
-
-async function doContribute() {
-  if (!currentContributeFundraiser) return;
-  const amount = parseFloat(elements.contributeAmount.value || 0);
-  const note = elements.contributeNote.value.trim();
-  const isAnon = elements.contributeAnonymous.checked;
-
-  if (!(amount >= WALLET_MIN_AMOUNT)) {
-    return walletShowMsg(elements.contributeMsg, 'Enter a valid amount.', 'error');
-  }
-
-  const fee = calculateFeePreview(amount);
-  const total = amount + fee;
-  if (total > myWallet.balance) {
-    return walletShowMsg(elements.contributeMsg, 'Not enough balance. Need ₹' + formatMoney(total) + '.', 'error');
-  }
-
-  elements.contributeGo.disabled = true;
-  elements.contributeGo.textContent = 'Sending…';
-
-  try {
-    const fundraiserId = currentContributeFundraiser.id;
-    const creatorId = currentContributeFundraiser.created_by;
-
-    const txnRes = await sendMoneyRpc({
-      toUserId: creatorId,
-      amount: amount,
-      note: 'Fundraiser: ' + (currentContributeFundraiser.title || ''),
-      conversationId: currentContributeFundraiser.conversation_id || null
-    });
-
-    await db.from('fundraiser_contributions').insert({
-      fundraiser_id: fundraiserId,
-      contributor_id: currentUser.id,
-      amount: amount,
-      note: note || null,
-      is_anonymous: isAnon,
-      transaction_id: (txnRes && txnRes.transaction_id) ? txnRes.transaction_id : null
-    });
-
-    let raisedOk = false;
-    try {
-      const { data: rpcRes, error: rpcErr } = await db.rpc('increment_fundraiser_raised', {
-        p_fundraiser_id: fundraiserId,
-        p_amount: amount
-      });
-      if (!rpcErr && (!rpcRes || rpcRes.ok !== false)) raisedOk = true;
-    } catch (e) {}
-
-    if (!raisedOk) {
-      try {
-        const { data: contribs } = await db.from('fundraiser_contributions')
-          .select('amount').eq('fundraiser_id', fundraiserId);
-        const computedTotal = (contribs || []).reduce((a, c) => a + Number(c.amount || 0), 0);
-        await db.from('group_fundraisers')
-          .update({ raised_amount: computedTotal, updated_at: new Date().toISOString() })
-          .eq('id', fundraiserId);
-      } catch (e) {}
-    }
-
-    walletShowMsg(elements.contributeMsg, 'Thank you! 🎉', 'success');
-    showToast('Contributed ₹' + formatMoney(amount) + '.', 'success');
-
-    await refreshWalletData();
-    if (typeof loadMessages === 'function') await loadMessages();
-    setTimeout(() => closeModal(elements.contributeModal), 900);
-  } catch (e) {
-    walletShowMsg(elements.contributeMsg, friendlyError(e), 'error');
-  } finally {
-    elements.contributeGo.disabled = false;
-    elements.contributeGo.textContent = 'Contribute';
-  }
-}
-
-/* =========================================================
-   THEOGO
-   ========================================================= */
-function openTheogoModal() {
-  currentTheogoSelection = null;
-  if (elements.theogoSearchInput) elements.theogoSearchInput.value = "";
-  if (elements.theogoResults) elements.theogoResults.innerHTML = '<div class="theogo-empty">Type to search the TheoGo wiki…</div>';
-  if (elements.theogoSelected) { elements.theogoSelected.classList.add("hidden"); elements.theogoSelected.innerHTML = ""; }
-  if (elements.theogoActions) elements.theogoActions.classList.add("hidden");
-  if (elements.theogoMessage) { elements.theogoMessage.textContent = ""; elements.theogoMessage.classList.add("hidden"); }
-  openModal(elements.theogoModal);
-  setTimeout(() => elements.theogoSearchInput && elements.theogoSearchInput.focus(), 200);
-}
-function closeTheogoModal() {
-  closeModal(elements.theogoModal);
-  currentTheogoSelection = null;
-}
-async function runTheogoSearch() {
-  const q = (elements.theogoSearchInput.value || "").trim();
-  if (q.length < 1) {
-    elements.theogoResults.innerHTML = '<div class="theogo-empty">Type to search…</div>';
-    return;
-  }
-  elements.theogoSearchBtn.disabled = true;
-  elements.theogoSearchBtn.textContent = "…";
-  elements.theogoResults.innerHTML = '<div class="theogo-empty">Searching TheoGo Wiki…</div>';
-
-  try {
-    const params = new URLSearchParams({
-      action: 'query', list: 'search', srsearch: q, srlimit: 15,
-      srprop: 'snippet|titlesnippet', format: 'json', origin: '*'
-    });
-    const url = THEOGO_API_BASE + '?' + params.toString();
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-
-    if (data.error) throw new Error(data.error.info || "Search error");
-
-    const results = (data.query && data.query.search) || [];
-    if (!results.length) {
-      elements.theogoResults.innerHTML = '<div class="theogo-empty">No results found on TheoGo.</div>';
-      return;
-    }
-
-    elements.theogoResults.innerHTML = "";
-    results.forEach(r => {
-      const pageUrl = "https://theogo.miraheze.org/wiki/" + encodeURIComponent(r.title.replace(/\s+/g, '_'));
-      const item = document.createElement("div");
-      item.className = "theogo-result";
-      const snippet = r.snippet || "";
-      item.innerHTML =
-        '<div class="theogo-result-head"><img src="' + THEOGO_LOGO_URL + '" alt="TG"><span>TheoGo Wiki</span></div>' +
-        '<div class="theogo-result-title">' + escapeHtml(r.title) + '</div>' +
-        '<div class="theogo-result-snippet">' + snippet + '</div>';
-      item.addEventListener("click", () => selectTheogoResult({ title: r.title, url: pageUrl, snippet }));
-      elements.theogoResults.appendChild(item);
-    });
-  } catch (e) {
-    console.error("TheoGo search error", e);
-    elements.theogoResults.innerHTML =
-      '<div class="theogo-empty">Could not search TheoGo. ' +
-      escapeHtml(e.message || "Please try again later.") + '</div>';
-  } finally {
-    elements.theogoSearchBtn.disabled = false;
-    elements.theogoSearchBtn.textContent = "Search";
-  }
-}
-function selectTheogoResult(result) {
-  currentTheogoSelection = result;
-  elements.theogoResults.querySelectorAll(".theogo-result").forEach(el => el.classList.remove("selected"));
-  Array.from(elements.theogoResults.children).forEach(el => {
-    const title = el.querySelector(".theogo-result-title");
-    if (title && title.textContent === result.title) el.classList.add("selected");
-  });
-
-  elements.theogoSelected.classList.remove("hidden");
-  elements.theogoSelected.innerHTML =
-    '<div class="theogo-selected-icon"><img src="' + THEOGO_LOGO_URL + '" alt="TG"></div>' +
-    '<div class="theogo-selected-body">' +
-      '<strong>' + escapeHtml(result.title) + '</strong>' +
-      '<a href="' + escapeHtml(result.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(result.url) + '</a>' +
-    '</div>' +
-    '<button type="button" class="theogo-selected-clear" aria-label="Clear">×</button>';
-
-  elements.theogoSelected.querySelector(".theogo-selected-clear").addEventListener("click", () => {
-    currentTheogoSelection = null;
-    elements.theogoSelected.classList.add("hidden");
-    elements.theogoSelected.innerHTML = "";
-    elements.theogoActions.classList.add("hidden");
-    elements.theogoResults.querySelectorAll(".theogo-result").forEach(el => el.classList.remove("selected"));
-  });
-
-  elements.theogoActions.classList.remove("hidden");
-}
-async function shareTheogoArticle() {
-  if (!currentTheogoSelection) return showToast("Pick an article first.", "error");
-  if (!currentConversation) {
-    closeTheogoModal();
-    return showToast("Open a chat first.", "error");
-  }
-  const sel = currentTheogoSelection;
-  const content = "📖 " + sel.title + "\n" + sel.url;
-
-  elements.theogoShareBtn.disabled = true;
-  elements.theogoShareBtn.textContent = "Sharing…";
-
-  try {
-    const { error } = await db.from("messages").insert({
-      conversation_id: currentConversation.id,
-      sender_id: currentUser.id,
-      content
-    }).select().single();
-    if (error) throw error;
-
-    showToast("Article shared.", "success");
-    closeTheogoModal();
-    await loadMessages();
-  } catch (e) {
-    if (elements.theogoMessage) {
-      elements.theogoMessage.textContent = friendlyError(e);
-      elements.theogoMessage.classList.remove("hidden", "error", "success");
-      elements.theogoMessage.classList.add("error");
-    }
-  } finally {
-    elements.theogoShareBtn.disabled = false;
-    elements.theogoShareBtn.textContent = "Share in chat";
-  }
-}
-
-console.log('[JustGo] wallet.js loaded — v15');
+start();
+})();
